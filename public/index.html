@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collaborative Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: #f8f6f3;
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* Header */
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #e8e5e0;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 14px; font-weight: 700;
+    }
+    .header-title { font-size: 15px; font-weight: 600; color: #1e293b; }
+    .header-status { font-size: 12px; color: #94a3b8; margin-left: 4px; }
+    .header-actions { display: flex; gap: 6px; }
+
+    .btn {
+      padding: 5px 12px; font-size: 12px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      border: none; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-reject {
+      color: #dc2626; background: transparent;
+      border: 1px solid rgba(220, 38, 38, 0.2);
+    }
+    .btn-accept { color: #fff; background: #16a34a; }
+    .btn-revise {
+      color: #fff; padding: 5px 14px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
+    }
+    .btn-revise:disabled {
+      opacity: 0.5; cursor: not-allowed;
+    }
+
+    /* Banner */
+    .banner {
+      max-width: 1060px; margin: 16px auto 0; padding: 10px 16px;
+      background: rgba(99, 102, 241, 0.05);
+      border: 1px solid rgba(99, 102, 241, 0.12);
+      border-radius: 8px; display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: #475569; line-height: 1.5;
+    }
+    .banner-close {
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: 16px; padding: 0;
+    }
+
+    /* Layout */
+    .layout {
+      max-width: 1060px; margin: 20px auto;
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+
+    /* Document */
+    .document {
+      padding: 48px 48px 80px; background: #fff;
+      border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      border: 1px solid #e8e5e0; min-height: 420px; cursor: text;
+    }
+    .paragraph {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 17px; line-height: 1.9; color: #1e293b;
+      margin: 0 0 24px 0; white-space: pre-wrap;
+    }
+    .paragraph[contenteditable="true"] { outline: none; }
+
+    /* Highlights */
+    .highlight {
+      border-radius: 2px; cursor: pointer; padding: 1px 0;
+      transition: outline 0.15s ease;
+    }
+    .highlight.active { outline-offset: 1px; }
+
+    ::highlight(pending-comment) {
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    /* Tracked changes inline */
+    .change-old {
+      text-decoration: line-through; color: #b91c1c;
+      background: rgba(239, 68, 68, 0.07); border-radius: 2px;
+      text-decoration-color: #dc2626;
+    }
+    .change-arrow { color: #94a3b8; margin: 0 3px; font-size: 14px; }
+    .change-new {
+      color: #15803d; background: rgba(34, 197, 94, 0.08); border-radius: 2px;
+    }
+    .change-flash {
+      background: rgba(34, 197, 94, 0.1); border-radius: 2px;
+      transition: background 1.2s ease;
+    }
+
+    .change-btn {
+      width: 20px; height: 20px; border-radius: 4px;
+      font-size: 12px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0; line-height: 1; vertical-align: middle;
+      position: relative; top: -1px; margin-left: 2px;
+    }
+    .change-btn-accept {
+      background: rgba(22, 163, 74, 0.1);
+      border: 1px solid rgba(22, 163, 74, 0.25);
+      color: #16a34a;
+    }
+    .change-btn-reject {
+      background: rgba(220, 38, 38, 0.06);
+      border: 1px solid rgba(220, 38, 38, 0.18);
+      color: #dc2626; font-size: 11px;
+    }
+
+    /* Comment popover */
+    .popover {
+      position: fixed; z-index: 100; background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+      border: 1px solid #e2e8f0; padding: 12px; width: 280px;
+    }
+    .popover textarea {
+      width: 100%; min-height: 56px; padding: 8px; font-size: 13px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      border: 1px solid #e2e8f0; border-radius: 6px;
+      resize: vertical; outline: none; line-height: 1.5; color: #334155;
+    }
+    .popover textarea:focus { border-color: #6366f1; }
+    .popover-actions {
+      display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;
+    }
+    .popover-cancel {
+      padding: 5px 12px; font-size: 12px; font-weight: 500;
+      color: #64748b; background: #f1f5f9;
+      border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer;
+    }
+    .popover-submit {
+      padding: 5px 12px; font-size: 12px; font-weight: 600;
+      color: #fff; background: #6366f1;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+    .popover-submit:disabled { background: #a5b4fc; cursor: default; }
+
+    /* Selection toolbar (Google Docs-style) */
+    .selection-toolbar {
+      position: fixed; z-index: 100;
+      display: none; flex-direction: column; align-items: center;
+      background: #fff; border-radius: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+      padding: 4px;
+    }
+    .selection-toolbar.visible { display: flex; }
+    .selection-toolbar button {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #6366f1; font-size: 18px;
+      transition: background 0.15s;
+    }
+    .selection-toolbar button:hover { background: rgba(99,102,241,0.08); }
+
+    /* Comment card (floating) */
+    .comment-card {
+      position: fixed; z-index: 101; background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+      border: 1px solid #e2e8f0; padding: 12px; width: 280px;
+      display: none;
+    }
+    .comment-card.visible { display: block; }
+    .comment-card textarea {
+      width: 100%; min-height: 56px; padding: 8px; font-size: 13px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      border: 1px solid #e2e8f0; border-radius: 6px;
+      resize: vertical; outline: none; line-height: 1.5; color: #334155;
+    }
+    .comment-card textarea:focus { border-color: #6366f1; }
+    .comment-card-actions {
+      display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;
+    }
+
+    /* Sidebar */
+    .sidebar { flex: 0 0 220px; min-width: 220px; position: relative; overflow: hidden; }
+    .sidebar-title {
+      font-size: 11px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 0;
+    }
+    .margin-comment {
+      position: absolute; left: 0; right: 0;
+      padding: 8px 10px;
+      border-radius: 0 6px 6px 0; cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .margin-comment-quote {
+      font-size: 11px; color: #94a3b8; margin-bottom: 3px;
+      font-weight: 500; display: flex; justify-content: space-between;
+      align-items: center; font-style: italic;
+    }
+    .margin-comment-text {
+      font-size: 13px; color: #334155; line-height: 1.45;
+    }
+    .margin-comment-delete {
+      background: none; border: none; color: #cbd5e1;
+      cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.15);
+      z-index: 200; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .loading-box {
+      background: #fff; border-radius: 14px; padding: 32px 40px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid #e2e8f0;
+      border-top-color: #6366f1; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: #fff; padding: 10px 20px;
+      border-radius: 8px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 300;
+      animation: fadeInUp 0.3s ease;
+    }
+    .toast.error { background: #dc2626; }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* Model picker */
+    .model-select {
+      padding: 4px 8px; font-size: 12px; font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      border: 1px solid #e2e8f0; border-radius: 6px;
+      background: #f8fafc; color: #475569; cursor: pointer;
+      outline: none; appearance: auto;
+    }
+    .model-select:focus { border-color: #6366f1; }
+
+    /* New document button */
+    .btn-new {
+      color: #64748b; background: transparent;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Empty state */
+    .empty-state {
+      max-width: 600px; margin: 80px auto; padding: 48px;
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      border: 1px solid #e8e5e0; text-align: center;
+    }
+    .empty-state-icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 24px; font-weight: 700; margin-bottom: 20px;
+    }
+    .empty-state h2 {
+      font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 6px;
+    }
+    .empty-state p {
+      font-size: 14px; color: #64748b; margin-bottom: 24px; line-height: 1.5;
+    }
+    .empty-state textarea {
+      width: 100%; min-height: 160px; padding: 14px; font-size: 14px;
+      font-family: 'Source Serif 4', Georgia, serif;
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      resize: vertical; outline: none; line-height: 1.8; color: #334155;
+    }
+    .empty-state textarea:focus { border-color: #6366f1; }
+    .empty-state textarea::placeholder { color: #94a3b8; font-family: 'DM Sans', sans-serif; font-size: 13px; }
+    .empty-state-actions {
+      display: flex; gap: 10px; justify-content: center; margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .btn-load-text {
+      padding: 8px 20px; font-size: 13px; font-weight: 600;
+      color: #fff; border: none; border-radius: 8px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
+    }
+    .btn-load-text:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-load-file {
+      padding: 8px 20px; font-size: 13px; font-weight: 600;
+      color: #6366f1; background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 8px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-sample {
+      padding: 8px 20px; font-size: 13px; font-weight: 500;
+      color: #64748b; background: transparent;
+      border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* Global instructions bar */
+    .global-bar {
+      margin-bottom: 12px;
+    }
+    .global-bar textarea {
+      width: 100%; padding: 10px 14px; font-size: 13px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      resize: none; outline: none; line-height: 1.5; color: #334155;
+      background: #fff; min-height: 40px; max-height: 120px;
+    }
+    .global-bar textarea:focus { border-color: #6366f1; }
+    .global-bar textarea::placeholder { color: #94a3b8; }
+
+    /* Document column wrapper */
+    .doc-column {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<!-- Selection toolbar (lives outside #app so render() won't destroy it) -->
+<div class="selection-toolbar" id="selection-toolbar">
+  <button onclick="openCommentCard()" title="Add comment">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <line x1="12" y1="8" x2="12" y2="14"/>
+      <line x1="9" y1="11" x2="15" y2="11"/>
+    </svg>
+  </button>
+</div>
+
+<!-- Comment card (lives outside #app so render() won't destroy it) -->
+<div class="comment-card" id="comment-card" onmousedown="event.stopPropagation()">
+  <textarea id="comment-input" placeholder="Add a comment or revision note..."></textarea>
+  <div class="comment-card-actions">
+    <button class="popover-cancel" onclick="closeCommentCard()">Cancel</button>
+    <button class="popover-submit" onclick="submitComment()">Comment</button>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+const SAMPLE_DOC = [
+  "The morning light filtered through the tall windows of the library, casting long golden rectangles across the oak reading tables. Dust motes drifted lazily in the beams, each one a tiny universe suspended in amber.",
+  "Eleanor traced her finger along the cracked spine of the atlas, feeling each ridge like a mountain range in miniature. The book had been her grandfather's — one of the few things she'd kept after the estate sale.",
+  "She turned to the map of the coastline, where faded blue ink marked harbors that no longer existed. Entire towns had been swallowed by the sea since this atlas was printed, their names now belonging only to the cartographer's careful hand.",
+  "Outside, the rain began again — soft at first, then insistent, drumming against the skylight like impatient fingers. Eleanor closed the atlas and listened.",
+];
+
+let state = {
+  paragraphs: [],
+  model: "claude-sonnet-4-5-20250929",
+  comments: [],       // { id, paraIndex, start, end, selectedText, comment, colorIdx }
+  activeCommentId: null,
+  pendingSelection: null,  // { paraIndex, start, end, selectedText }
+  colorCounter: 0,
+  showBanner: true,
+  globalInstruction: "",
+  loading: false,
+  toast: null,
+};
+
+const COLORS = [
+  { bg: "rgba(251,191,36,0.25)", border: "#f59e0b" },
+  { bg: "rgba(167,139,250,0.25)", border: "#8b5cf6" },
+  { bg: "rgba(52,211,153,0.25)", border: "#10b981" },
+  { bg: "rgba(251,113,133,0.25)", border: "#f43f5e" },
+  { bg: "rgba(96,165,250,0.25)", border: "#3b82f6" },
+];
+
+let changeIdCounter = 0;
+
+// ── Helpers ────────────────────────────────────────────
+function getPlainText(segments) {
+  return segments.map(s => s.type === "text" ? s.content : s.oldContent).join("");
+}
+
+function getPendingCount() {
+  return state.paragraphs.reduce((n, p) =>
+    n + p.segments.filter(s => s.type === "change" && s.status === "pending").length, 0);
+}
+
+function showToast(msg, isError) {
+  state.toast = { msg, isError };
+  render();
+  setTimeout(() => { state.toast = null; render(); }, 3000);
+}
+
+// ── Document loading ───────────────────────────────────
+function loadText(text) {
+  const content = text.trim();
+  if (!content) return;
+  state.paragraphs = [{ segments: [{ type: "text", content }] }];
+  state.comments = [];
+  state.activeCommentId = null;
+  state.showBanner = true;
+  render();
+}
+
+function loadSampleDoc() {
+  const content = SAMPLE_DOC.join("\n\n");
+  state.paragraphs = [{ segments: [{ type: "text", content }] }];
+  state.comments = [];
+  state.activeCommentId = null;
+  state.showBanner = true;
+  render();
+}
+
+function loadFile() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".txt,text/plain";
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => loadText(reader.result);
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function newDocument() {
+  state.paragraphs = [];
+  state.comments = [];
+  state.activeCommentId = null;
+  state.pendingSelection = null;
+  hideSelectionToolbar();
+  state.showBanner = true;
+  render();
+}
+
+// ── Actions ────────────────────────────────────────────
+function acceptChange(changeId) {
+  state.paragraphs.forEach(p => {
+    p.segments = p.segments.map(s => {
+      if (s.type === "change" && s.id === changeId) {
+        return { type: "text", content: s.newContent, flash: true };
+      }
+      return s;
+    });
+  });
+  render();
+  setTimeout(() => {
+    state.paragraphs.forEach(p => {
+      p.segments = p.segments.map(s => {
+        if (s.flash) { const { flash, ...rest } = s; return rest; }
+        return s;
+      });
+    });
+    render();
+  }, 1200);
+}
+
+function rejectChange(changeId) {
+  state.paragraphs.forEach(p => {
+    p.segments = p.segments.map(s => {
+      if (s.type === "change" && s.id === changeId)
+        return { type: "text", content: s.oldContent };
+      return s;
+    });
+  });
+  render();
+}
+
+function acceptAll() {
+  state.paragraphs.forEach(p => {
+    p.segments = p.segments.map(s => {
+      if (s.type === "change" && s.status === "pending")
+        return { type: "text", content: s.newContent, flash: true };
+      return s;
+    });
+  });
+  render();
+  setTimeout(() => {
+    state.paragraphs.forEach(p => {
+      p.segments = p.segments.map(s => {
+        if (s.flash) { const { flash, ...rest } = s; return rest; }
+        return s;
+      });
+    });
+    render();
+  }, 1200);
+}
+
+function rejectAll() {
+  state.paragraphs.forEach(p => {
+    p.segments = p.segments.map(s => {
+      if (s.type === "change" && s.status === "pending")
+        return { type: "text", content: s.oldContent };
+      return s;
+    });
+  });
+  render();
+}
+
+function addComment(comment) {
+  if (!state.pendingSelection || !comment.trim()) return;
+  const p = state.pendingSelection;
+  state.comments.push({
+    id: Date.now(),
+    paraIndex: p.paraIndex,
+    start: p.start,
+    end: p.end,
+    selectedText: p.selectedText,
+    comment: comment.trim(),
+    colorIdx: state.colorCounter,
+  });
+  state.colorCounter++;
+  state.activeCommentId = state.comments[state.comments.length - 1].id;
+  state.pendingSelection = null;
+  hideSelectionToolbar();
+  window.getSelection()?.removeAllRanges();
+  render();
+}
+
+function deleteComment(id) {
+  state.comments = state.comments.filter(c => c.id !== id);
+  state.activeCommentId = null;
+  render();
+}
+
+async function requestRevision() {
+  const hasComments = state.comments.length > 0;
+  const hasGlobal = state.globalInstruction.trim().length > 0;
+  if (!hasComments && !hasGlobal) return;
+
+  // Flatten each paragraph to plain text
+  const plainParas = state.paragraphs.map(p =>
+    p.segments.map(s => s.type === "text" ? s.content : (s.newContent || s.oldContent)).join("")
+  );
+
+  state.loading = true;
+  render();
+
+  try {
+    const body = {
+      paragraphs: plainParas,
+      comments: state.comments.map(c => ({
+        paraIndex: c.paraIndex,
+        selectedText: c.selectedText,
+        comment: c.comment,
+      })),
+      model: state.model,
+    };
+    if (hasGlobal) body.globalInstruction = state.globalInstruction.trim();
+
+    const res = await fetch("/api/revise", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error, true);
+      state.loading = false;
+      render();
+      return;
+    }
+
+    // Apply changes as tracked revisions
+    let appliedCount = 0;
+    for (const change of data.changes) {
+      const para = state.paragraphs[change.paraIndex];
+      if (!para) { console.warn("Revision skipped: no paragraph at index", change.paraIndex); continue; }
+
+      // Find the segment and position containing oldText
+      const newSegments = [];
+      let applied = false;
+
+      for (const seg of para.segments) {
+        if (applied || seg.type !== "text") {
+          newSegments.push(seg);
+          continue;
+        }
+
+        const idx = seg.content.indexOf(change.oldText);
+        if (idx === -1) {
+          newSegments.push(seg);
+          continue;
+        }
+
+        // Split: before + change + after
+        if (idx > 0) {
+          newSegments.push({ type: "text", content: seg.content.slice(0, idx) });
+        }
+        newSegments.push({
+          type: "change",
+          id: "ch" + (++changeIdCounter),
+          oldContent: change.oldText,
+          newContent: change.newText,
+          status: "pending",
+        });
+        const afterIdx = idx + change.oldText.length;
+        if (afterIdx < seg.content.length) {
+          newSegments.push({ type: "text", content: seg.content.slice(afterIdx) });
+        }
+        applied = true;
+      }
+
+      if (applied) {
+        para.segments = newSegments;
+        appliedCount++;
+      } else {
+        console.warn("Revision skipped: oldText not found in paragraph", change.paraIndex, JSON.stringify(change.oldText));
+      }
+    }
+
+    // Clear comments and global instruction that were addressed
+    state.comments = [];
+    state.activeCommentId = null;
+    state.globalInstruction = "";
+
+    if (appliedCount === 0) {
+      showToast("Claude couldn't find matching text to revise", true);
+    } else {
+      showToast(`${appliedCount} revision${appliedCount > 1 ? "s" : ""} applied`);
+    }
+  } catch (err) {
+    showToast("Network error — is the server running?", true);
+  }
+
+  state.loading = false;
+  render();
+}
+
+// ── Input handler (direct text editing) ────────────────
+function handleInput(e) {
+  let node = e.target;
+  while (node && !(node.dataset && node.dataset.para !== undefined)) {
+    node = node.parentElement;
+  }
+  if (!node) return;
+
+  const pi = parseInt(node.dataset.para);
+  const para = state.paragraphs[pi];
+  if (!para) return;
+
+  const newText = node.innerText;
+  para.segments = [{ type: "text", content: newText }];
+
+  // Remove comments on this paragraph (offsets are now invalid)
+  const hadComments = state.comments.some(c => c.paraIndex === pi);
+  if (hadComments) {
+    state.comments = state.comments.filter(c => c.paraIndex !== pi);
+    if (state.activeCommentId && !state.comments.find(c => c.id === state.activeCommentId)) {
+      state.activeCommentId = null;
+    }
+    // Lightweight DOM update for header status
+    const statusEl = document.querySelector(".header-status");
+    if (statusEl) {
+      const pendingCount = getPendingCount();
+      let txt = "";
+      if (state.comments.length > 0) txt += `${state.comments.length} comment${state.comments.length !== 1 ? "s" : ""}`;
+      if (state.comments.length > 0 && pendingCount > 0) txt += " · ";
+      if (pendingCount > 0) txt += `${pendingCount} change${pendingCount !== 1 ? "s" : ""}`;
+      if (state.comments.length === 0 && pendingCount === 0) txt = "No changes";
+      statusEl.textContent = txt;
+    }
+  }
+}
+
+// ── Arrow key navigation + paragraph merging ───────────
+function handleKeyDown(e) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  let paraNode = sel.anchorNode;
+  while (paraNode && !(paraNode.dataset && paraNode.dataset.para !== undefined)) {
+    paraNode = paraNode.parentElement;
+  }
+  if (!paraNode) return;
+
+  const pi = parseInt(paraNode.dataset.para);
+
+  // Enter → insert a simple line break instead of new block element
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.execCommand("insertLineBreak");
+    return;
+  }
+
+  // Backspace at start of paragraph → merge with previous
+  if (e.key === "Backspace" && pi > 0) {
+    const range = sel.getRangeAt(0);
+    if (range.collapsed && isCursorAtStart(paraNode)) {
+      e.preventDefault();
+      const prevPara = state.paragraphs[pi - 1];
+      const curPara = state.paragraphs[pi];
+      if (!prevPara || !curPara) return;
+
+      const prevText = getPlainText(prevPara.segments);
+      const curText = getPlainText(curPara.segments);
+      const joinOffset = prevText.length;
+
+      // Merge into previous paragraph
+      prevPara.segments = [{ type: "text", content: prevText + curText }];
+      state.paragraphs.splice(pi, 1);
+
+      // Fix comment indices
+      state.comments = state.comments.filter(c => c.paraIndex !== pi);
+      state.comments.forEach(c => {
+        if (c.paraIndex === pi - 1) return; // already on prev, keep as-is
+        if (c.paraIndex > pi) c.paraIndex--;
+      });
+
+      render();
+
+      // Place cursor at the join point
+      const newParaNode = document.querySelector(`.paragraph[data-para="${pi - 1}"]`);
+      if (newParaNode) {
+        newParaNode.focus();
+        placeCursorAtOffset(newParaNode, joinOffset);
+      }
+      return;
+    }
+  }
+
+  // Delete at end of paragraph → merge with next
+  if (e.key === "Delete" && pi < state.paragraphs.length - 1) {
+    const range = sel.getRangeAt(0);
+    if (range.collapsed && isCursorAtEnd(paraNode)) {
+      e.preventDefault();
+      const curPara = state.paragraphs[pi];
+      const nextPara = state.paragraphs[pi + 1];
+      if (!curPara || !nextPara) return;
+
+      const curText = getPlainText(curPara.segments);
+      const nextText = getPlainText(nextPara.segments);
+      const joinOffset = curText.length;
+
+      curPara.segments = [{ type: "text", content: curText + nextText }];
+      state.paragraphs.splice(pi + 1, 1);
+
+      state.comments = state.comments.filter(c => c.paraIndex !== pi + 1);
+      state.comments.forEach(c => {
+        if (c.paraIndex > pi + 1) c.paraIndex--;
+      });
+
+      render();
+
+      const newParaNode = document.querySelector(`.paragraph[data-para="${pi}"]`);
+      if (newParaNode) {
+        newParaNode.focus();
+        placeCursorAtOffset(newParaNode, joinOffset);
+      }
+      return;
+    }
+  }
+
+  // Arrow navigation across paragraphs
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+
+  const startContainer = sel.getRangeAt(0).startContainer;
+  const startOffset = sel.getRangeAt(0).startOffset;
+
+  requestAnimationFrame(() => {
+    const newSel = window.getSelection();
+    if (!newSel || !newSel.rangeCount) return;
+    const newRange = newSel.getRangeAt(0);
+
+    if (newRange.startContainer === startContainer && newRange.startOffset === startOffset) {
+      const allParas = Array.from(document.querySelectorAll('.paragraph[contenteditable="true"]'));
+      const targetPi = e.key === "ArrowDown" ? pi + 1 : pi - 1;
+      const targetPara = allParas.find(p => parseInt(p.dataset.para) === targetPi);
+      if (!targetPara) return;
+
+      targetPara.focus();
+      const r = document.createRange();
+      if (e.key === "ArrowDown") {
+        r.setStart(targetPara, 0);
+        r.collapse(true);
+      } else {
+        r.selectNodeContents(targetPara);
+        r.collapse(false);
+      }
+      newSel.removeAllRanges();
+      newSel.addRange(r);
+    }
+  });
+}
+
+function isCursorAtStart(paraNode) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return false;
+  const range = sel.getRangeAt(0);
+  const testRange = document.createRange();
+  testRange.setStart(paraNode, 0);
+  testRange.setEnd(range.startContainer, range.startOffset);
+  return testRange.toString().length === 0;
+}
+
+function isCursorAtEnd(paraNode) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return false;
+  const range = sel.getRangeAt(0);
+  const testRange = document.createRange();
+  testRange.setStart(range.endContainer, range.endOffset);
+  testRange.setEnd(paraNode, paraNode.childNodes.length);
+  return testRange.toString().length === 0;
+}
+
+function placeCursorAtOffset(node, charOffset) {
+  const sel = window.getSelection();
+  const range = document.createRange();
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  let remaining = charOffset;
+  while (walker.nextNode()) {
+    const textNode = walker.currentNode;
+    if (remaining <= textNode.length) {
+      range.setStart(textNode, remaining);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+    remaining -= textNode.length;
+  }
+  // Past the end — place at end
+  range.selectNodeContents(node);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// ── Selection handler ──────────────────────────────────
+function handleMouseUp(e) {
+  // Don't interfere with toolbar/card clicks
+  const toolbar = document.getElementById("selection-toolbar");
+  const card = document.getElementById("comment-card");
+  if (toolbar.contains(e.target) || card.contains(e.target)) return;
+
+  // Small delay to let selection finalize
+  setTimeout(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      // Only hide if click was outside the toolbar/card
+      if (!card.classList.contains("visible")) {
+        hideSelectionToolbar();
+      }
+      return;
+    }
+
+    const selectedText = sel.toString().trim();
+    if (!selectedText || selectedText.length < 2) return;
+
+    // Find paragraph
+    let node = sel.getRangeAt(0).startContainer;
+    while (node && !(node.dataset && node.dataset.para !== undefined)) {
+      node = node.parentElement;
+    }
+    if (!node) return;
+
+    const paraIndex = parseInt(node.dataset.para);
+    const para = state.paragraphs[paraIndex];
+    if (!para) return;
+
+    const plainText = getPlainText(para.segments);
+    const idx = plainText.indexOf(selectedText);
+    if (idx === -1) return;
+
+    // Store selection info without calling render()
+    state.pendingSelection = {
+      paraIndex,
+      start: idx,
+      end: idx + selectedText.length,
+      selectedText,
+    };
+
+    // Position toolbar to the right of the document
+    const docEl = document.querySelector(".document");
+    const range = sel.getRangeAt(0);
+    const rangeRect = range.getBoundingClientRect();
+    if (docEl) {
+      const docRect = docEl.getBoundingClientRect();
+      showSelectionToolbar(docRect.right + 12, rangeRect.top + rangeRect.height / 2 - 18);
+    }
+  }, 10);
+}
+
+// ── Toolbar / Comment Card functions ───────────────────
+function showSelectionToolbar(x, y) {
+  const toolbar = document.getElementById("selection-toolbar");
+  toolbar.style.left = x + "px";
+  toolbar.style.top = y + "px";
+  toolbar.classList.add("visible");
+}
+
+function hideSelectionToolbar() {
+  const toolbar = document.getElementById("selection-toolbar");
+  const card = document.getElementById("comment-card");
+  toolbar.classList.remove("visible");
+  card.classList.remove("visible");
+  clearPendingHighlight();
+  state.pendingSelection = null;
+}
+
+function applyPendingHighlight() {
+  clearPendingHighlight();
+  if (!CSS.highlights || !state.pendingSelection) return;
+  const ps = state.pendingSelection;
+  const paraNode = document.querySelector(`.paragraph[data-para="${ps.paraIndex}"]`);
+  if (!paraNode) return;
+
+  const walker = document.createTreeWalker(paraNode, NodeFilter.SHOW_TEXT);
+  let charCount = 0;
+  const ranges = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const nodeStart = charCount;
+    const nodeEnd = charCount + node.length;
+    charCount = nodeEnd;
+    const overlapStart = Math.max(ps.start, nodeStart);
+    const overlapEnd = Math.min(ps.end, nodeEnd);
+    if (overlapStart >= overlapEnd) continue;
+    const r = new Range();
+    r.setStart(node, overlapStart - nodeStart);
+    r.setEnd(node, overlapEnd - nodeStart);
+    ranges.push(r);
+  }
+  if (ranges.length > 0) {
+    CSS.highlights.set("pending-comment", new Highlight(...ranges));
+  }
+}
+
+function clearPendingHighlight() {
+  if (CSS.highlights) CSS.highlights.delete("pending-comment");
+}
+
+function openCommentCard() {
+  const toolbar = document.getElementById("selection-toolbar");
+  const card = document.getElementById("comment-card");
+  const tRect = toolbar.getBoundingClientRect();
+  card.style.left = tRect.left + "px";
+  card.style.top = (tRect.bottom + 6) + "px";
+  card.classList.add("visible");
+  applyPendingHighlight();
+  const textarea = document.getElementById("comment-input");
+  textarea.value = "";
+  textarea.focus();
+}
+
+function closeCommentCard() {
+  const card = document.getElementById("comment-card");
+  card.classList.remove("visible");
+  hideSelectionToolbar();
+  window.getSelection()?.removeAllRanges();
+}
+
+function submitComment() {
+  const textarea = document.getElementById("comment-input");
+  addComment(textarea.value);
+}
+
+// ── Render ─────────────────────────────────────────────
+function render() {
+  const app = document.getElementById("app");
+  const pendingCount = getPendingCount();
+
+  let html = "";
+
+  // Header
+  html += `<div class="header">
+    <div class="header-left">
+      <div class="logo">C</div>
+      <span class="header-title">Collaborative Editor</span>
+      <span class="header-status">`;
+  if (state.comments.length > 0) html += `${state.comments.length} comment${state.comments.length !== 1 ? "s" : ""}`;
+  if (state.comments.length > 0 && pendingCount > 0) html += " · ";
+  if (pendingCount > 0) html += `${pendingCount} change${pendingCount !== 1 ? "s" : ""}`;
+  if (state.comments.length === 0 && pendingCount === 0) html += "No changes";
+  html += `</span></div><div class="header-actions">`;
+  if (state.paragraphs.length > 0) {
+    html += `<select class="model-select" onchange="state.model=this.value;render()">
+      <option value="claude-sonnet-4-5-20250929"${state.model === "claude-sonnet-4-5-20250929" ? " selected" : ""}>Sonnet 4.5</option>
+      <option value="claude-opus-4-6"${state.model === "claude-opus-4-6" ? " selected" : ""}>Opus 4.6</option>
+    </select>`;
+    html += `<button class="btn btn-new" onclick="newDocument()">New</button>`;
+  }
+  if (pendingCount > 0) {
+    html += `<button class="btn btn-reject" onclick="rejectAll()">Reject All</button>`;
+    html += `<button class="btn btn-accept" onclick="acceptAll()">Accept All</button>`;
+  }
+  if (state.paragraphs.length > 0) {
+    const reviseDisabled = state.comments.length === 0 && !state.globalInstruction.trim();
+    html += `<button class="btn btn-revise" id="btn-revise" onclick="requestRevision()" ${reviseDisabled ? 'disabled' : ''}>⟳ Request Revision</button>`;
+  }
+  html += `</div></div>`;
+
+
+  // Empty state
+  if (state.paragraphs.length === 0) {
+    html += `<div class="empty-state">
+      <div class="empty-state-icon">C</div>
+      <h2>Collaborative Editor</h2>
+      <p>Paste your text below, load a file, or start with a sample document.</p>
+      <textarea id="paste-input" placeholder="Paste or type your document text here..."></textarea>
+      <div class="empty-state-actions">
+        <button class="btn-load-text" onclick="const t=document.getElementById('paste-input').value;if(t.trim())loadText(t)">Load Text</button>
+        <button class="btn-load-file" onclick="loadFile()">Load File</button>
+        <button class="btn-sample" onclick="loadSampleDoc()">Use Sample Document</button>
+      </div>
+    </div>`;
+  }
+
+  if (state.paragraphs.length > 0) {
+  // Layout
+  html += `<div class="layout">`;
+
+  // Document column (global bar + document)
+  html += `<div class="doc-column">`;
+
+  // Global instructions
+  html += `<div class="global-bar">
+    <textarea id="global-input" placeholder="Describe a change to apply across the entire document..."
+      oninput="state.globalInstruction=this.value;var b=document.getElementById('btn-revise');if(b)b.disabled=!this.value.trim()&&state.comments.length===0">${esc(state.globalInstruction)}</textarea>
+  </div>`;
+
+  // Document
+  html += `<div class="document">`;
+  state.paragraphs.forEach((para, pi) => {
+    const hasPendingChanges = para.segments.some(s => s.type === "change" && s.status === "pending");
+    const editable = !hasPendingChanges ? ' contenteditable="true"' : '';
+    html += `<p class="paragraph" data-para="${pi}"${editable}>`;
+
+    para.segments.forEach((seg, si) => {
+      if (seg.type === "change" && seg.status === "pending") {
+        html += `<span class="change-old">${esc(seg.oldContent)}</span>`;
+        html += `<span class="change-arrow"> → </span>`;
+        html += `<span class="change-new">${esc(seg.newContent)}</span>`;
+        html += `<button class="change-btn change-btn-accept" onclick="event.stopPropagation();acceptChange('${seg.id}')">✓</button>`;
+        html += `<button class="change-btn change-btn-reject" onclick="event.stopPropagation();rejectChange('${seg.id}')">✕</button>`;
+      } else if (seg.flash) {
+        html += `<span class="change-flash">${esc(seg.content)}</span>`;
+      } else {
+        // Render with highlights
+        const content = seg.content;
+        const paraComments = state.comments.filter(c => c.paraIndex === pi);
+
+        if (paraComments.length === 0) {
+          html += esc(content);
+        } else {
+          // Calculate offset of this segment within the paragraph
+          let offset = 0;
+          for (let j = 0; j < si; j++) {
+            const s = para.segments[j];
+            offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
+          }
+
+          const segStart = offset;
+          const segEnd = segStart + content.length;
+          const overlapping = paraComments
+            .filter(c => c.start < segEnd && c.end > segStart)
+            .sort((a, b) => a.start - b.start);
+
+          if (overlapping.length === 0) {
+            html += esc(content);
+          } else {
+            let cursor = 0;
+            for (const c of overlapping) {
+              const relStart = Math.max(0, c.start - segStart);
+              const relEnd = Math.min(content.length, c.end - segStart);
+              if (relStart > cursor) html += esc(content.slice(cursor, relStart));
+              const color = COLORS[c.colorIdx % COLORS.length];
+              const isActive = state.activeCommentId === c.id;
+              html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
+                style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
+                onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
+              >${esc(content.slice(relStart, relEnd))}</span>`;
+              cursor = relEnd;
+            }
+            if (cursor < content.length) html += esc(content.slice(cursor));
+          }
+        }
+      }
+    });
+
+    html += `</p>`;
+  });
+  html += `</div>`; // .document
+  html += `</div>`; // .doc-column
+
+  // Sidebar (always rendered to keep layout stable)
+  html += `<div class="sidebar">`;
+  if (state.comments.length > 0) {
+    html += `<div class="sidebar-title">Comments</div>`;
+    state.comments.forEach(c => {
+      const color = COLORS[c.colorIdx % COLORS.length];
+      const isActive = state.activeCommentId === c.id;
+      const quote = c.selectedText.length > 35 ? c.selectedText.slice(0, 35) + "…" : c.selectedText;
+      html += `<div class="margin-comment" data-sidebar-comment="${c.id}"
+        style="border-left:3px solid ${color.border};background:${isActive ? color.bg : 'rgba(248,250,252,0.8)'}"
+        onclick="state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()">
+        <div class="margin-comment-quote">
+          <span>"${esc(quote)}"</span>
+          <button class="margin-comment-delete" onclick="event.stopPropagation();deleteComment(${c.id})">×</button>
+        </div>
+        <div class="margin-comment-text">${esc(c.comment)}</div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  html += `</div>`; // layout
+  } // end if paragraphs.length > 0
+
+  // Loading
+  if (state.loading) {
+    html += `<div class="loading-overlay">
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <div style="font-size:14px;font-weight:600;color:#1e293b">Requesting revision…</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px">Claude is reviewing your comments</div>
+      </div>
+    </div>`;
+  }
+
+  // Toast
+  if (state.toast) {
+    html += `<div class="toast${state.toast.isError ? ' error' : ''}">${esc(state.toast.msg)}</div>`;
+  }
+
+  app.innerHTML = html;
+
+  // Attach input + keydown listeners for direct text editing
+  const docEl = app.querySelector(".document");
+  if (docEl) {
+    docEl.oninput = handleInput;
+    docEl.onkeydown = handleKeyDown;
+  }
+
+  alignSidebarComments();
+}
+
+function alignSidebarComments() {
+  const sidebar = document.querySelector(".sidebar");
+  const docEl = document.querySelector(".document");
+  if (!sidebar || !docEl) return;
+
+  const docRect = docEl.getBoundingClientRect();
+  const sidebarRect = sidebar.getBoundingClientRect();
+  let minNextTop = 0; // prevent overlap
+
+  state.comments.forEach(c => {
+    const highlight = docEl.querySelector(`[data-comment-id="${c.id}"]`);
+    const card = sidebar.querySelector(`[data-sidebar-comment="${c.id}"]`);
+    if (!highlight || !card) return;
+
+    const highlightRect = highlight.getBoundingClientRect();
+    // Target top relative to the sidebar's top
+    const desiredTop = highlightRect.top - sidebarRect.top;
+    const top = Math.max(desiredTop, minNextTop);
+    card.style.top = top + "px";
+    minNextTop = top + card.offsetHeight + 6;
+  });
+
+  // Set sidebar min-height so it encompasses all positioned comments
+  if (state.comments.length > 0) {
+    sidebar.style.minHeight = minNextTop + "px";
+  }
+}
+
+function esc(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Init ───────────────────────────────────────────────
+render();
+
+// Document-level listeners (persist across render cycles)
+document.addEventListener("mouseup", handleMouseUp);
+
+document.addEventListener("mousedown", function(e) {
+  const toolbar = document.getElementById("selection-toolbar");
+  const card = document.getElementById("comment-card");
+  if (toolbar.contains(e.target) || card.contains(e.target)) return;
+  if (toolbar.classList.contains("visible") && !card.classList.contains("visible")) {
+    hideSelectionToolbar();
+  }
+});
+
+// Handle keyboard shortcuts in comment card
+document.getElementById("comment-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    submitComment();
+  }
+  if (e.key === "Escape") {
+    closeCommentCard();
+  }
+});
+</script>
+
+</body>
+</html>

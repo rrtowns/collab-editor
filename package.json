@@ -1,0 +1,15 @@
+{
+  "name": "collab-editor",
+  "version": "1.0.0",
+  "description": "Collaborative document editor with Claude-powered inline revisions",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0"
+  }
+}
