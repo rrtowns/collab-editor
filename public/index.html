@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Collaborative Editor</title>
+  <title>Rick's Docs</title>
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -54,7 +56,8 @@
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
       box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
     }
-    .btn-revise:disabled {
+    .btn-revise:disabled, .btn-new:disabled, .btn-reject:disabled,
+    .btn-accept:disabled, .model-select:disabled {
       opacity: 0.5; cursor: not-allowed;
     }
 
@@ -88,12 +91,14 @@
       font-size: 17px; line-height: 1.9; color: #1e293b;
       margin: 0 0 24px 0; white-space: pre-wrap;
     }
-    .paragraph[contenteditable="true"] { outline: none; }
-    .paragraph[contenteditable="true"]:empty::before {
+    .paragraph[contenteditable="true"], .paragraph-editing { outline: none; }
+    .paragraph[contenteditable="true"]:empty::before,
+    .paragraph-editing:empty::before {
       content: "Start writing here...";
       color: #94a3b8; font-style: italic;
       pointer-events: none;
     }
+    .document[contenteditable="true"] { outline: none; }
 
     /* Highlights */
     .highlight {
@@ -333,6 +338,13 @@
       font-family: 'DM Sans', sans-serif;
     }
 
+    /* Revision controls row */
+    .revision-bar {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 8px;
+    }
+    .revision-bar .spacer { flex: 1; }
+
     /* Global instructions bar */
     .global-bar {
       margin-bottom: 12px;
@@ -479,6 +491,72 @@
     }
     .doc-card:hover .doc-card-delete { opacity: 1; }
     .doc-card-delete:hover { color: #dc2626; border-color: rgba(220,38,38,0.3); }
+
+    /* Mode toggle (segmented control) */
+    .mode-toggle {
+      display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px;
+      overflow: hidden; margin-right: 4px;
+    }
+    .mode-toggle-btn {
+      padding: 4px 10px; font-size: 12px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      border: none; background: #fff; color: #64748b;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .mode-toggle-btn:not(:last-child) { border-right: 1px solid #e2e8f0; }
+    .mode-toggle-btn:hover { background: #f8fafc; }
+    .mode-toggle-btn.active {
+      background: #6366f1; color: #fff;
+    }
+    .mode-toggle-btn.active:hover { background: #4f46e5; }
+
+    /* Normal mode paragraph */
+    .paragraph-normal { cursor: default; user-select: text; caret-color: transparent; }
+
+    /* Pending changes in Normal mode */
+    .change-pending-normal {
+      border-left: 3px solid #22c55e; padding-left: 4px;
+      background: rgba(34, 197, 94, 0.06); border-radius: 2px;
+    }
+
+    /* LaTeX section headings */
+    .latex-section {
+      display: block;
+      font-size: 24px; font-weight: 700; color: #1e293b;
+      margin: 8px 0 4px; line-height: 1.4;
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+    .latex-subsection {
+      display: block;
+      font-size: 19px; font-weight: 600; color: #334155;
+      margin: 6px 0 2px; line-height: 1.4;
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* LaTeX error */
+    .latex-error {
+      color: #dc2626; font-size: 12px; font-family: monospace;
+      background: rgba(220, 38, 38, 0.06); padding: 1px 4px;
+      border-radius: 3px;
+    }
+    /* Unrenderable LaTeX markup (e.g. \ref, \cite, \label) */
+    .latex-markup {
+      font-size: 12px; font-family: 'SFMono-Regular', 'Consolas', monospace;
+      background: #eef0f4; color: #64748b; padding: 1px 5px;
+      border-radius: 4px; white-space: nowrap;
+    }
+
+    /* Click-to-edit paragraph in Normal mode */
+    .paragraph-editing {
+      outline: 2px solid rgba(99, 102, 241, 0.3);
+      outline-offset: 2px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.02);
+    }
+
+    /* KaTeX display math spacing */
+    .katex-display { margin: 12px 0; text-align: center; }
   </style>
 </head>
 <body>
@@ -530,6 +608,9 @@ let state = {
   docTitle: "Untitled",
   saveStatus: null,   // "saving" | "saved" | "unsaved" | "error" | null
   docList: null,      // cached document list for home view
+  viewMode: "source", // "source" | "normal" — not persisted
+  revisionScope: "focused", // "focused" | "section" | "subsection" | "full" — not persisted
+  editingPara: null, // paragraph index being click-to-edited in Normal mode
 };
 
 const COLORS = [
@@ -545,6 +626,96 @@ let changeIdCounter = 0;
 // ── Helpers ────────────────────────────────────────────
 function getPlainText(segments) {
   return segments.map(s => s.type === "text" ? s.content : s.oldContent).join("");
+}
+
+function getPlainParagraphs() {
+  return state.paragraphs.map(p =>
+    p.segments.map(s => s.type === "text" ? s.content : (s.newContent || s.oldContent)).join("")
+  );
+}
+
+function getFocusedIndices(commentedIndices, totalParas) {
+  const included = new Set();
+  for (const idx of commentedIndices) {
+    if (idx > 0) included.add(idx - 1);
+    included.add(idx);
+    if (idx < totalParas - 1) included.add(idx + 1);
+  }
+  return included;
+}
+
+function getBlockStartsByRegex(plainParas, regex) {
+  const starts = [];
+  plainParas.forEach((text, idx) => {
+    if (regex.test(text)) starts.push(idx);
+  });
+  return starts;
+}
+
+function getBlocksFromStarts(starts, totalParas) {
+  if (starts.length === 0 || totalParas === 0) return [];
+  const sorted = Array.from(new Set(starts)).sort((a, b) => a - b);
+  const blocks = [];
+  if (sorted[0] > 0) blocks.push({ start: 0, end: sorted[0] - 1 });
+  for (let i = 0; i < sorted.length; i++) {
+    const start = sorted[i];
+    const next = i < sorted.length - 1 ? sorted[i + 1] : totalParas;
+    blocks.push({ start, end: next - 1 });
+  }
+  return blocks;
+}
+
+function getSubsectionBlocks(plainParas, sectionBlocks, subsectionStarts) {
+  if (subsectionStarts.length === 0 || plainParas.length === 0) return [];
+  const sortedSubStarts = Array.from(new Set(subsectionStarts)).sort((a, b) => a - b);
+  const parentRanges = sectionBlocks.length > 0 ? sectionBlocks : [{ start: 0, end: plainParas.length - 1 }];
+  const blocks = [];
+
+  for (const parent of parentRanges) {
+    const subs = sortedSubStarts.filter(i => i >= parent.start && i <= parent.end);
+    if (subs.length === 0) {
+      blocks.push({ start: parent.start, end: parent.end });
+      continue;
+    }
+    if (subs[0] > parent.start) blocks.push({ start: parent.start, end: subs[0] - 1 });
+    for (let i = 0; i < subs.length; i++) {
+      const start = subs[i];
+      const nextStart = i < subs.length - 1 ? subs[i + 1] : (parent.end + 1);
+      blocks.push({ start, end: nextStart - 1 });
+    }
+  }
+  return blocks;
+}
+
+function getLatexScopeInfo(plainParas) {
+  const sectionStarts = getBlockStartsByRegex(plainParas, /\\section\*?\s*\{/);
+  const subsectionStarts = getBlockStartsByRegex(plainParas, /\\subsection\*?\s*\{/);
+  const sectionBlocks = getBlocksFromStarts(sectionStarts, plainParas.length);
+  const subsectionBlocks = getSubsectionBlocks(plainParas, sectionBlocks, subsectionStarts);
+  const hasLatexMarkers = plainParas.some(p => /\\(?:begin|end|chapter|section|subsection|textbf|textit|emph|cite|ref)\b/.test(p));
+  return {
+    isLatexDoc: sectionStarts.length > 0 || subsectionStarts.length > 0 || hasLatexMarkers,
+    sectionBlocks,
+    subsectionBlocks,
+  };
+}
+
+function normalizeRevisionScope(scope, scopeInfo) {
+  if (scope === "section" && (!scopeInfo.isLatexDoc || scopeInfo.sectionBlocks.length === 0)) return "focused";
+  if (scope === "subsection" && (!scopeInfo.isLatexDoc || scopeInfo.subsectionBlocks.length === 0)) return "focused";
+  if (scope !== "focused" && scope !== "section" && scope !== "subsection" && scope !== "full") return "focused";
+  return scope;
+}
+
+function expandIndicesByBlocks(commentedIndices, blocks, fallbackIndices) {
+  const included = new Set();
+  for (const idx of commentedIndices) {
+    const block = blocks.find(b => idx >= b.start && idx <= b.end);
+    if (!block) continue;
+    for (let i = block.start; i <= block.end; i++) included.add(i);
+  }
+  if (included.size === 0) return new Set(fallbackIndices);
+  return included;
 }
 
 function getPendingCount() {
@@ -724,7 +895,19 @@ function formatRelativeTime(dateStr) {
 async function loadText(text) {
   const content = text.trim();
   if (!content) return;
-  state.paragraphs = [{ segments: [{ type: "text", content }] }];
+  const normalized = content.replace(/\r\n/g, '\n');
+  let blocks;
+  if (/\n\n/.test(normalized)) {
+    blocks = normalized.split(/\n\n+/);
+  } else {
+    blocks = normalized.split(/\n/);
+  }
+  state.paragraphs = blocks.filter(b => b.trim().length > 0).map(b => ({
+    segments: [{ type: "text", content: b }]
+  }));
+  if (state.paragraphs.length === 0) {
+    state.paragraphs = [{ segments: [{ type: "text", content: "" }] }];
+  }
   state.comments = [];
   state.activeCommentId = null;
   state.showBanner = true;
@@ -777,7 +960,7 @@ async function loadSampleDoc() {
 function loadFile() {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".txt,text/plain";
+  input.accept = ".txt,.tex,.md,.latex,text/plain";
   input.onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -907,24 +1090,54 @@ async function requestRevision() {
   const hasGlobal = state.globalInstruction.trim().length > 0;
   if (!hasComments && !hasGlobal) return;
 
-  // Flatten each paragraph to plain text
-  const plainParas = state.paragraphs.map(p =>
-    p.segments.map(s => s.type === "text" ? s.content : (s.newContent || s.oldContent)).join("")
-  );
+  const plainParas = getPlainParagraphs();
+  const scopeInfo = getLatexScopeInfo(plainParas);
+  const normalizedScope = normalizeRevisionScope(state.revisionScope, scopeInfo);
+  if (normalizedScope !== state.revisionScope) {
+    state.revisionScope = normalizedScope;
+  }
+
+  // Determine effective scope (auto-select full if no comments)
+  const effectiveScope = (!hasComments && hasGlobal) ? "full" : normalizedScope;
 
   state.loading = true;
   render();
 
   try {
     const body = {
-      paragraphs: plainParas,
       comments: state.comments.map(c => ({
         paraIndex: c.paraIndex,
         selectedText: c.selectedText,
         comment: c.comment,
       })),
       model: state.model,
+      scopeMode: effectiveScope,
     };
+
+    if (effectiveScope !== "full" && hasComments) {
+      const commentedIndices = new Set(
+        state.comments
+          .map(c => c.paraIndex)
+          .filter(i => i >= 0 && i < plainParas.length)
+      );
+      const focusedIndices = getFocusedIndices(commentedIndices, plainParas.length);
+      let includedIndices = focusedIndices;
+
+      if (effectiveScope === "section") {
+        includedIndices = expandIndicesByBlocks(commentedIndices, scopeInfo.sectionBlocks, focusedIndices);
+      } else if (effectiveScope === "subsection") {
+        includedIndices = expandIndicesByBlocks(commentedIndices, scopeInfo.subsectionBlocks, focusedIndices);
+      }
+
+      const paragraphMap = Array.from(includedIndices).sort((a, b) => a - b)
+        .map(i => ({ index: i, text: plainParas[i] }));
+      body.focusedMode = true;
+      body.paragraphMap = paragraphMap;
+    } else {
+      body.focusedMode = false;
+      body.paragraphs = plainParas;
+    }
+
     if (hasGlobal) body.globalInstruction = state.globalInstruction.trim();
     if (state.attachments.length > 0) body.attachments = state.attachments;
 
@@ -1016,9 +1229,22 @@ function handleInput(e) {
   while (node && !(node.dataset && node.dataset.para !== undefined)) {
     node = node.parentElement;
   }
+  // With document-level contenteditable, e.target is the document div.
+  // Fall back to finding the paragraph from cursor position.
+  if (!node) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      node = sel.anchorNode;
+      while (node && !(node.dataset && node.dataset.para !== undefined)) {
+        node = node.parentElement;
+      }
+    }
+  }
   if (!node) return;
 
   const pi = parseInt(node.dataset.para);
+  // In normal mode, only handle input for the editing paragraph
+  if (state.viewMode === "normal" && pi !== state.editingPara) return;
   const para = state.paragraphs[pi];
   if (!para) return;
 
@@ -1048,6 +1274,197 @@ function handleInput(e) {
   }
 }
 
+function getParaNodeFromNode(node) {
+  if (!node) return null;
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  while (node && !(node.dataset && node.dataset.para !== undefined)) {
+    node = node.parentElement;
+  }
+  return node || null;
+}
+
+function getSelectionParaNode(sel) {
+  if (!sel || !sel.rangeCount) return null;
+  let paraNode = getParaNodeFromNode(sel.anchorNode);
+  if (paraNode) return paraNode;
+
+  const range = sel.getRangeAt(0);
+  paraNode = getParaNodeFromNode(range.startContainer);
+  if (paraNode) return paraNode;
+
+  const container = range.startContainer;
+  if (container && container.nodeType === Node.ELEMENT_NODE) {
+    const children = container.childNodes;
+    paraNode = getParaNodeFromNode(children[range.startOffset] || null);
+    if (paraNode) return paraNode;
+    paraNode = getParaNodeFromNode(children[range.startOffset - 1] || null);
+    if (paraNode) return paraNode;
+  }
+  return null;
+}
+
+function insertPlainTextAtSelection(text) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return false;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  range.setStart(textNode, textNode.length);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return true;
+}
+
+// ── Paste handler (multi-paragraph) ────────────────────
+function handlePaste(e) {
+  let blocks;
+  const clipboard = e.clipboardData || window.clipboardData;
+  if (!clipboard) return;
+
+  // Try HTML first (rich text from Word, web pages, etc.)
+  const html = clipboard.getData('text/html');
+  if (html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const blockEls = doc.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6');
+    if (blockEls.length > 1) {
+      blocks = Array.from(blockEls).map(el => el.textContent.trim()).filter(t => t.length > 0);
+    }
+  }
+
+  // Fall back to plain text
+  if (!blocks || blocks.length <= 1) {
+    const text = clipboard.getData('text/plain');
+    if (!text) return;
+    const normalized = text.replace(/\r\n/g, '\n');
+    if (/\n\n/.test(normalized)) {
+      blocks = normalized.split(/\n\n+/);
+    } else {
+      blocks = normalized.split(/\n/);
+    }
+    blocks = blocks.filter(b => b.trim().length > 0);
+  }
+
+  if (!blocks || blocks.length <= 1) {
+    // Single-block paste
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const paraNode = getSelectionParaNode(sel);
+    if (!paraNode) return;
+    const pi = parseInt(paraNode.dataset.para);
+    if (state.viewMode === "normal" && pi !== state.editingPara) return;
+    const text = (blocks && blocks[0]) || clipboard.getData('text/plain');
+    if (!text) return;
+    e.preventDefault();
+    if (!insertPlainTextAtSelection(text)) return;
+    paraNode.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const paraNode = getSelectionParaNode(sel);
+  if (!paraNode) return;
+  const pi = parseInt(paraNode.dataset.para);
+  const para = state.paragraphs[pi];
+  if (!para) return;
+
+  e.preventDefault();
+
+  const fullText = getPlainText(para.segments);
+  const cursorOffset = getCursorOffset(paraNode);
+
+  // Handle selected text replacement
+  const range = sel.getRangeAt(0);
+  let selEnd = cursorOffset;
+  if (!range.collapsed) {
+    const preEndRange = document.createRange();
+    preEndRange.setStart(paraNode, 0);
+    preEndRange.setEnd(range.endContainer, range.endOffset);
+    const endDiv = document.createElement('div');
+    endDiv.style.whiteSpace = 'pre-wrap';
+    endDiv.appendChild(preEndRange.cloneContents());
+    selEnd = endDiv.innerText.length;
+  }
+
+  const before = fullText.slice(0, cursorOffset);
+  const after = fullText.slice(selEnd);
+
+  // First block: append to text before cursor
+  para.segments = [{ type: "text", content: before + blocks[0] }];
+
+  // Middle + last blocks become new paragraphs (last gets "after" text)
+  const newParas = [];
+  for (let i = 1; i < blocks.length - 1; i++) {
+    newParas.push({ segments: [{ type: "text", content: blocks[i] }] });
+  }
+  newParas.push({ segments: [{ type: "text", content: blocks[blocks.length - 1] + after }] });
+  state.paragraphs.splice(pi + 1, 0, ...newParas);
+
+  // Adjust comments
+  const insertedCount = newParas.length;
+  state.comments = state.comments.filter(c => {
+    if (c.paraIndex !== pi) return true;
+    if (c.start < cursorOffset && c.end > cursorOffset) return false;
+    if (c.start >= cursorOffset && c.end <= selEnd) return false;
+    if (c.start < selEnd && c.end > cursorOffset) return false;
+    return true;
+  });
+  state.comments.forEach(c => {
+    if (c.paraIndex === pi && c.start >= selEnd) {
+      c.paraIndex = pi + insertedCount;
+      c.start = c.start - selEnd + blocks[blocks.length - 1].length;
+      c.end = c.end - selEnd + blocks[blocks.length - 1].length;
+    } else if (c.paraIndex > pi) {
+      c.paraIndex += insertedCount;
+    }
+  });
+
+  if (state.viewMode === "normal") state.editingPara = pi + insertedCount;
+  scheduleSave();
+  render();
+
+  const cursorTarget = pi + insertedCount;
+  const cursorPos = blocks[blocks.length - 1].length;
+  requestAnimationFrame(() => {
+    const targetNode = document.querySelector(`.paragraph[data-para="${cursorTarget}"]`);
+    if (targetNode) {
+      const docDiv = targetNode.closest('.document');
+      if (docDiv) docDiv.focus();
+      placeCursorAtOffset(targetNode, cursorPos);
+    }
+  });
+}
+
+// ── Copy handler (clean multi-paragraph text) ──────────
+function handleCopy(e) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+
+  let startNode = sel.getRangeAt(0).startContainer;
+  let endNode = sel.getRangeAt(0).endContainer;
+  while (startNode && !(startNode.dataset && startNode.dataset.para !== undefined)) startNode = startNode.parentElement;
+  while (endNode && !(endNode.dataset && endNode.dataset.para !== undefined)) endNode = endNode.parentElement;
+  if (!startNode || !endNode) return;
+
+  const startPi = parseInt(startNode.dataset.para);
+  const endPi = parseInt(endNode.dataset.para);
+
+  // Single paragraph — let browser default handle it
+  if (startPi === endPi) return;
+
+  // Multi-paragraph: build clean text from state
+  e.preventDefault();
+  const parts = [];
+  for (let i = startPi; i <= endPi; i++) {
+    const para = state.paragraphs[i];
+    if (!para) continue;
+    parts.push(getPlainText(para.segments));
+  }
+  e.clipboardData.setData('text/plain', parts.join('\n\n'));
+}
+
 // ── Arrow key navigation + paragraph merging ───────────
 function handleKeyDown(e) {
   const sel = window.getSelection();
@@ -1061,10 +1478,68 @@ function handleKeyDown(e) {
 
   const pi = parseInt(paraNode.dataset.para);
 
-  // Enter → insert a simple line break instead of new block element
-  if (e.key === "Enter" && !e.shiftKey) {
+  // In normal mode, only handle keys for the editing paragraph
+  if (state.viewMode === "normal" && pi !== state.editingPara) return;
+
+  // Shift+Enter → insert a line break within the paragraph
+  if (e.key === "Enter" && e.shiftKey) {
     e.preventDefault();
     document.execCommand("insertLineBreak");
+    return;
+  }
+
+  // Enter → split paragraph at cursor
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    const para = state.paragraphs[pi];
+    if (!para) return;
+
+    const fullText = getPlainText(para.segments);
+    const cursorOffset = getCursorOffset(paraNode);
+
+    const before = fullText.slice(0, cursorOffset);
+    const after = fullText.slice(cursorOffset);
+
+    // Update current paragraph to text before cursor
+    para.segments = [{ type: "text", content: before }];
+
+    // Insert new paragraph with text after cursor
+    state.paragraphs.splice(pi + 1, 0, {
+      segments: [{ type: "text", content: after }]
+    });
+
+    // Adjust comments
+    const splitOffset = cursorOffset;
+    state.comments = state.comments.filter(c => {
+      if (c.paraIndex !== pi) return true;
+      // Remove comments that span the split
+      return !(c.start < splitOffset && c.end > splitOffset);
+    });
+    state.comments.forEach(c => {
+      if (c.paraIndex === pi && c.start >= splitOffset) {
+        // Move to new paragraph, adjust offsets
+        c.paraIndex = pi + 1;
+        c.start -= splitOffset;
+        c.end -= splitOffset;
+      } else if (c.paraIndex > pi) {
+        c.paraIndex++;
+      }
+    });
+
+    // In Normal mode, move editing to the new paragraph
+    if (state.viewMode === "normal") state.editingPara = pi + 1;
+
+    scheduleSave();
+    render();
+
+    // Place cursor at start of new paragraph
+    requestAnimationFrame(() => {
+      const newParaNode = document.querySelector(`.paragraph[data-para="${pi + 1}"]`);
+      if (newParaNode) {
+        newParaNode.focus();
+        placeCursorAtOffset(newParaNode, 0);
+      }
+    });
     return;
   }
 
@@ -1148,24 +1623,57 @@ function handleKeyDown(e) {
     const newRange = newSel.getRangeAt(0);
 
     if (newRange.startContainer === startContainer && newRange.startOffset === startOffset) {
-      const allParas = Array.from(document.querySelectorAll('.paragraph[contenteditable="true"]'));
       const targetPi = e.key === "ArrowDown" ? pi + 1 : pi - 1;
-      const targetPara = allParas.find(p => parseInt(p.dataset.para) === targetPi);
-      if (!targetPara) return;
+      if (targetPi < 0 || targetPi >= state.paragraphs.length) return;
 
-      targetPara.focus();
-      const r = document.createRange();
-      if (e.key === "ArrowDown") {
-        r.setStart(targetPara, 0);
-        r.collapse(true);
+      if (state.viewMode === "normal") {
+        // Switch editing to the target paragraph
+        state.editingPara = targetPi;
+        render();
+        // Position cursor at end for ArrowUp, start for ArrowDown
+        if (e.key === "ArrowUp") {
+          const node = document.querySelector(`.paragraph-editing`);
+          if (node) {
+            const r = document.createRange();
+            r.selectNodeContents(node);
+            r.collapse(false);
+            const s = window.getSelection();
+            s.removeAllRanges();
+            s.addRange(r);
+          }
+        }
       } else {
-        r.selectNodeContents(targetPara);
-        r.collapse(false);
+        const allParas = Array.from(document.querySelectorAll('.paragraph[data-para]'));
+        const targetPara = allParas.find(p => parseInt(p.dataset.para) === targetPi);
+        if (!targetPara) return;
+
+        const r = document.createRange();
+        if (e.key === "ArrowDown") {
+          r.setStart(targetPara, 0);
+          r.collapse(true);
+        } else {
+          r.selectNodeContents(targetPara);
+          r.collapse(false);
+        }
+        newSel.removeAllRanges();
+        newSel.addRange(r);
       }
-      newSel.removeAllRanges();
-      newSel.addRange(r);
     }
   });
+}
+
+function getCursorOffset(paraNode) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return 0;
+  const range = sel.getRangeAt(0);
+  const preRange = document.createRange();
+  preRange.setStart(paraNode, 0);
+  preRange.setEnd(range.startContainer, range.startOffset);
+  const fragment = preRange.cloneContents();
+  const div = document.createElement('div');
+  div.style.whiteSpace = 'pre-wrap';
+  div.appendChild(fragment);
+  return div.innerText.length;
 }
 
 function isCursorAtStart(paraNode) {
@@ -1213,6 +1721,7 @@ function placeCursorAtOffset(node, charOffset) {
 
 // ── Selection handler ──────────────────────────────────
 function handleMouseUp(e) {
+  // In Normal mode, allow selection even outside the editing paragraph
   // Don't interfere with toolbar/card clicks
   const toolbar = document.getElementById("selection-toolbar");
   const card = document.getElementById("comment-card");
@@ -1366,7 +1875,7 @@ function render() {
     const saveLabels = { saving: "Saving…", saved: "Saved", unsaved: "Unsaved", error: "Save failed" };
     html += `<span class="save-indicator ${state.saveStatus || ''}" id="save-indicator">${saveLabels[state.saveStatus] || ''}</span>`;
   } else {
-    html += `<span class="header-title">Collaborative Editor</span>`;
+    html += `<span class="header-title">Rick's Docs</span>`;
   }
   html += `<span class="header-status">`;
   if (state.comments.length > 0) html += `${state.comments.length} comment${state.comments.length !== 1 ? "s" : ""}`;
@@ -1375,20 +1884,23 @@ function render() {
   if (state.comments.length === 0 && pendingCount === 0) html += "No changes";
   html += `</span></div><div class="header-actions">`;
   if (state.paragraphs.length > 0) {
-    html += `<select class="model-select" onchange="state.model=this.value;render()">
-      <option value="claude-sonnet-4-5-20250929"${state.model === "claude-sonnet-4-5-20250929" ? " selected" : ""}>Sonnet 4.5</option>
-      <option value="claude-opus-4-6"${state.model === "claude-opus-4-6" ? " selected" : ""}>Opus 4.6</option>
-    </select>`;
+    // Mode toggle
+    html += `<div class="mode-toggle">
+      <button class="mode-toggle-btn${state.viewMode === 'source' ? ' active' : ''}" onclick="state.viewMode='source';state.editingPara=null;latexCache.clear();render()" title="Source mode (Cmd+Shift+M)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Source
+      </button>
+      <button class="mode-toggle-btn${state.viewMode === 'normal' ? ' active' : ''}" onclick="state.viewMode='normal';state.editingPara=null;latexCache.clear();render()" title="Normal mode (Cmd+Shift+M)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Normal
+      </button>
+    </div>`;
     html += `<button class="btn btn-new" onclick="loadFile()">Load File</button>`;
-    html += `<button class="btn btn-new" onclick="newDocument()">New</button>`;
   }
   if (pendingCount > 0) {
-    html += `<button class="btn btn-reject" onclick="rejectAll()">Reject All</button>`;
-    html += `<button class="btn btn-accept" onclick="acceptAll()">Accept All</button>`;
-  }
-  if (state.paragraphs.length > 0) {
-    const reviseDisabled = state.comments.length === 0 && !state.globalInstruction.trim();
-    html += `<button class="btn btn-revise" id="btn-revise" onclick="requestRevision()" ${reviseDisabled ? 'disabled' : ''}>⟳ Request Revision</button>`;
+    const nm = state.viewMode === "normal";
+    html += `<button class="btn btn-reject" onclick="rejectAll()" ${nm ? 'disabled' : ''}>Reject All</button>`;
+    html += `<button class="btn btn-accept" onclick="acceptAll()" ${nm ? 'disabled' : ''}>Accept All</button>`;
   }
   html += `</div></div>`;
 
@@ -1445,66 +1957,201 @@ function render() {
       oninput="state.globalInstruction=this.value;scheduleSave();var b=document.getElementById('btn-revise');if(b)b.disabled=!this.value.trim()&&state.comments.length===0">${esc(state.globalInstruction)}</textarea>
   </div>`;
 
+  // Revision controls row (model, scope, button)
+  {
+    const reviseDisabled = state.comments.length === 0 && !state.globalInstruction.trim();
+    const hasComments = state.comments.length > 0;
+    const hasGlobal = state.globalInstruction.trim().length > 0;
+    const plainParasForScope = getPlainParagraphs();
+    const scopeInfo = getLatexScopeInfo(plainParasForScope);
+    const normalizedScope = normalizeRevisionScope(state.revisionScope, scopeInfo);
+    if (normalizedScope !== state.revisionScope) state.revisionScope = normalizedScope;
+    const sectionScopeEnabled = scopeInfo.isLatexDoc && scopeInfo.sectionBlocks.length > 0;
+    const subsectionScopeEnabled = scopeInfo.isLatexDoc && scopeInfo.subsectionBlocks.length > 0;
+    const forceFull = !hasComments && hasGlobal;
+    const effectiveScope = forceFull ? "full" : normalizedScope;
+    html += `<div class="revision-bar">
+      <select class="model-select" onchange="state.model=this.value;render()">
+        <option value="claude-sonnet-4-5-20250929"${state.model === "claude-sonnet-4-5-20250929" ? " selected" : ""}>Sonnet 4.5</option>
+        <option value="claude-opus-4-6"${state.model === "claude-opus-4-6" ? " selected" : ""}>Opus 4.6</option>
+      </select>
+      <select class="model-select" id="scope-select" onchange="state.revisionScope=this.value" ${forceFull ? 'disabled' : ''}>
+        <option value="focused"${effectiveScope === "focused" ? " selected" : ""}>Focused</option>
+        <option value="section"${effectiveScope === "section" ? " selected" : ""}${sectionScopeEnabled ? "" : " disabled"}>Section</option>
+        <option value="subsection"${effectiveScope === "subsection" ? " selected" : ""}${subsectionScopeEnabled ? "" : " disabled"}>Subsection</option>
+        <option value="full"${effectiveScope === "full" ? " selected" : ""}>Full Doc</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="btn btn-revise" id="btn-revise" onclick="requestRevision()" ${reviseDisabled ? 'disabled' : ''}>⟳ Request Revision</button>
+    </div>`;
+  }
+
   // Document
-  html += `<div class="document">`;
+  const isNormal = state.viewMode === "normal";
+  const docCE = state.paragraphs.length > 0 ? ' contenteditable="true"' : '';
+  html += `<div class="document"${docCE}>`;
   state.paragraphs.forEach((para, pi) => {
-    const hasPendingChanges = para.segments.some(s => s.type === "change" && s.status === "pending");
-    const editable = !hasPendingChanges ? ' contenteditable="true"' : '';
-    html += `<p class="paragraph" data-para="${pi}"${editable}>`;
+    if (isNormal) {
+      const hasPendingChanges = para.segments.some(s => s.type === "change" && s.status === "pending");
+      const isEditing = pi === state.editingPara;
 
-    para.segments.forEach((seg, si) => {
-      if (seg.type === "change" && seg.status === "pending") {
-        html += `<span class="change-old">${esc(seg.oldContent)}</span>`;
-        html += `<span class="change-arrow"> → </span>`;
-        html += `<span class="change-new">${esc(seg.newContent)}</span>`;
-        html += `<button class="change-btn change-btn-accept" onclick="event.stopPropagation();acceptChange('${seg.id}')">✓</button>`;
-        html += `<button class="change-btn change-btn-reject" onclick="event.stopPropagation();rejectChange('${seg.id}')">✕</button>`;
-      } else if (seg.flash) {
-        html += `<span class="change-flash">${esc(seg.content)}</span>`;
-      } else {
-        // Render with highlights
-        const content = seg.content;
-        const paraComments = state.comments.filter(c => c.paraIndex === pi);
-
-        if (paraComments.length === 0) {
-          html += esc(content);
-        } else {
-          // Calculate offset of this segment within the paragraph
-          let offset = 0;
-          for (let j = 0; j < si; j++) {
-            const s = para.segments[j];
-            offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
+      if (isEditing && !hasPendingChanges) {
+        // ── Normal mode, editing paragraph: render as Source-style ──
+        html += `<p class="paragraph paragraph-editing" data-para="${pi}">`;
+        para.segments.forEach((seg, si) => {
+          if (seg.type === "change" && seg.status === "pending") {
+            html += `<span class="change-old">${esc(seg.oldContent)}</span>`;
+            html += `<span class="change-arrow"> → </span>`;
+            html += `<span class="change-new">${esc(seg.newContent)}</span>`;
+            html += `<button class="change-btn change-btn-accept" onclick="event.stopPropagation();acceptChange('${seg.id}')">✓</button>`;
+            html += `<button class="change-btn change-btn-reject" onclick="event.stopPropagation();rejectChange('${seg.id}')">✕</button>`;
+          } else if (seg.flash) {
+            html += `<span class="change-flash">${esc(seg.content)}</span>`;
+          } else {
+            const content = seg.content;
+            const paraComments = state.comments.filter(c => c.paraIndex === pi);
+            if (paraComments.length === 0) {
+              html += esc(content);
+            } else {
+              let offset = 0;
+              for (let j = 0; j < si; j++) {
+                const s = para.segments[j];
+                offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
+              }
+              const segStart = offset;
+              const segEnd = segStart + content.length;
+              const overlapping = paraComments
+                .filter(c => c.start < segEnd && c.end > segStart)
+                .sort((a, b) => a.start - b.start);
+              if (overlapping.length === 0) {
+                html += esc(content);
+              } else {
+                let cursor = 0;
+                for (const c of overlapping) {
+                  const relStart = Math.max(0, c.start - segStart);
+                  const relEnd = Math.min(content.length, c.end - segStart);
+                  if (relStart > cursor) html += esc(content.slice(cursor, relStart));
+                  const color = COLORS[c.colorIdx % COLORS.length];
+                  const isActive = state.activeCommentId === c.id;
+                  html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
+                    style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
+                    onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
+                  >${esc(content.slice(relStart, relEnd))}</span>`;
+                  cursor = relEnd;
+                }
+                if (cursor < content.length) html += esc(content.slice(cursor));
+              }
+            }
           }
+        });
+        html += `</p>`;
+      } else {
+        // ── Normal mode: rendered LaTeX, click to edit ──
+        const clickHandler = hasPendingChanges ? '' : ` onclick="if(window.getSelection().isCollapsed){state.editingPara=${pi};render()}"`;
+        html += `<p class="paragraph paragraph-normal" data-para="${pi}"${clickHandler}>`;
+        para.segments.forEach((seg, si) => {
+          if (seg.type === "change" && seg.status === "pending") {
+            html += `<span class="change-pending-normal">${renderLatex(seg.newContent)}</span>`;
+          } else if (seg.flash) {
+            html += `<span class="change-flash">${renderLatex(seg.content)}</span>`;
+          } else {
+            const content = seg.content;
+            const paraComments = state.comments.filter(c => c.paraIndex === pi);
+            if (paraComments.length === 0) {
+              html += renderLatex(content);
+            } else {
+              let offset = 0;
+              for (let j = 0; j < si; j++) {
+                const s = para.segments[j];
+                offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
+              }
+              const segStart = offset;
+              const segEnd = segStart + content.length;
+              const overlapping = paraComments
+                .filter(c => c.start < segEnd && c.end > segStart)
+                .sort((a, b) => a.start - b.start);
+              if (overlapping.length === 0) {
+                html += renderLatex(content);
+              } else {
+                let cursor = 0;
+                for (const c of overlapping) {
+                  const relStart = Math.max(0, c.start - segStart);
+                  const relEnd = Math.min(content.length, c.end - segStart);
+                  if (relStart > cursor) html += renderLatex(content.slice(cursor, relStart));
+                  const color = COLORS[c.colorIdx % COLORS.length];
+                  const isActive = state.activeCommentId === c.id;
+                  html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
+                    style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
+                    onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
+                  >${renderLatex(content.slice(relStart, relEnd))}</span>`;
+                  cursor = relEnd;
+                }
+                if (cursor < content.length) html += renderLatex(content.slice(cursor));
+              }
+            }
+          }
+        });
+        html += `</p>`;
+      }
+    } else {
+      // ── Source mode: existing behavior ──
+      const hasPendingChanges = para.segments.some(s => s.type === "change" && s.status === "pending");
+      html += `<p class="paragraph" data-para="${pi}">`;
 
-          const segStart = offset;
-          const segEnd = segStart + content.length;
-          const overlapping = paraComments
-            .filter(c => c.start < segEnd && c.end > segStart)
-            .sort((a, b) => a.start - b.start);
+      para.segments.forEach((seg, si) => {
+        if (seg.type === "change" && seg.status === "pending") {
+          html += `<span class="change-old">${esc(seg.oldContent)}</span>`;
+          html += `<span class="change-arrow"> → </span>`;
+          html += `<span class="change-new">${esc(seg.newContent)}</span>`;
+          html += `<button class="change-btn change-btn-accept" onclick="event.stopPropagation();acceptChange('${seg.id}')">✓</button>`;
+          html += `<button class="change-btn change-btn-reject" onclick="event.stopPropagation();rejectChange('${seg.id}')">✕</button>`;
+        } else if (seg.flash) {
+          html += `<span class="change-flash">${esc(seg.content)}</span>`;
+        } else {
+          // Render with highlights
+          const content = seg.content;
+          const paraComments = state.comments.filter(c => c.paraIndex === pi);
 
-          if (overlapping.length === 0) {
+          if (paraComments.length === 0) {
             html += esc(content);
           } else {
-            let cursor = 0;
-            for (const c of overlapping) {
-              const relStart = Math.max(0, c.start - segStart);
-              const relEnd = Math.min(content.length, c.end - segStart);
-              if (relStart > cursor) html += esc(content.slice(cursor, relStart));
-              const color = COLORS[c.colorIdx % COLORS.length];
-              const isActive = state.activeCommentId === c.id;
-              html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
-                style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
-                onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
-              >${esc(content.slice(relStart, relEnd))}</span>`;
-              cursor = relEnd;
+            // Calculate offset of this segment within the paragraph
+            let offset = 0;
+            for (let j = 0; j < si; j++) {
+              const s = para.segments[j];
+              offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
             }
-            if (cursor < content.length) html += esc(content.slice(cursor));
+
+            const segStart = offset;
+            const segEnd = segStart + content.length;
+            const overlapping = paraComments
+              .filter(c => c.start < segEnd && c.end > segStart)
+              .sort((a, b) => a.start - b.start);
+
+            if (overlapping.length === 0) {
+              html += esc(content);
+            } else {
+              let cursor = 0;
+              for (const c of overlapping) {
+                const relStart = Math.max(0, c.start - segStart);
+                const relEnd = Math.min(content.length, c.end - segStart);
+                if (relStart > cursor) html += esc(content.slice(cursor, relStart));
+                const color = COLORS[c.colorIdx % COLORS.length];
+                const isActive = state.activeCommentId === c.id;
+                html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
+                  style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
+                  onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
+                >${esc(content.slice(relStart, relEnd))}</span>`;
+                cursor = relEnd;
+              }
+              if (cursor < content.length) html += esc(content.slice(cursor));
+            }
           }
         }
-      }
-    });
+      });
 
-    html += `</p>`;
+      html += `</p>`;
+    }
   });
   html += `</div>`; // .document
   html += `</div>`; // .doc-column
@@ -1553,9 +2200,82 @@ function render() {
 
   // Attach input + keydown listeners for direct text editing
   const docEl = app.querySelector(".document");
-  if (docEl) {
+  if (docEl && state.viewMode === "source") {
     docEl.oninput = handleInput;
     docEl.onkeydown = handleKeyDown;
+    docEl.onpaste = handlePaste;
+    docEl.oncopy = handleCopy;
+    // Prevent edits in paragraphs with pending changes (paste is handled by handlePaste)
+    docEl.addEventListener("beforeinput", (e) => {
+      if (e.inputType === "insertFromPaste" || e.inputType === "insertFromDrop") return;
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      let node = sel.anchorNode;
+      while (node && !(node.dataset && node.dataset.para !== undefined)) {
+        node = node.parentElement;
+      }
+      if (!node) return;
+      const pi = parseInt(node.dataset.para);
+      const para = state.paragraphs[pi];
+      if (para && para.segments.some(s => s.type === "change" && s.status === "pending")) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  // Normal mode: attach oncopy and beforeinput guard
+  if (docEl && state.viewMode === "normal") {
+    docEl.oncopy = handleCopy;
+    // Prevent edits outside the editing paragraph (paste is handled by handlePaste)
+    docEl.addEventListener("beforeinput", (e) => {
+      if (e.inputType === "insertFromPaste" || e.inputType === "insertFromDrop") return;
+      if (state.editingPara === null) { e.preventDefault(); return; }
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) { e.preventDefault(); return; }
+      let node = sel.anchorNode;
+      while (node && !(node.dataset && node.dataset.para !== undefined)) {
+        node = node.parentElement;
+      }
+      if (!node || parseInt(node.dataset.para) !== state.editingPara) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  // Normal mode: attach handlers for the editing paragraph
+  if (docEl && state.viewMode === "normal" && state.editingPara !== null) {
+    docEl.oninput = handleInput;
+    docEl.onkeydown = handleKeyDown;
+    docEl.onpaste = handlePaste;
+    docEl.oncopy = handleCopy;
+    const editingNode = docEl.querySelector(`.paragraph-editing[data-para="${state.editingPara}"]`);
+    if (editingNode) {
+      // Focus the document (contenteditable host) and position cursor in editing paragraph
+      docEl.focus();
+      const range = document.createRange();
+      range.selectNodeContents(editingNode);
+      range.collapse(true);
+      const initSel = window.getSelection();
+      initSel.removeAllRanges();
+      initSel.addRange(range);
+      const blurredPara = state.editingPara;
+      docEl.addEventListener("blur", () => {
+        setTimeout(() => {
+          // If user clicked a different paragraph, editingPara already changed — don't reset
+          if (state.editingPara !== blurredPara) return;
+          // If user has an active text selection (e.g. drag-selecting across paragraphs), don't close
+          const sel = window.getSelection();
+          if (sel && !sel.isCollapsed) return;
+          const active = document.activeElement;
+          const toolbar = document.getElementById("selection-toolbar");
+          const card = document.getElementById("comment-card");
+          if (toolbar && toolbar.contains(active)) return;
+          if (card && card.contains(active)) return;
+          state.editingPara = null;
+          render();
+        }, 50);
+      });
+    }
   }
 
   alignSidebarComments();
@@ -1593,6 +2313,83 @@ function esc(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+// ── LaTeX rendering ────────────────────────────────────
+const latexCache = new Map();
+
+function renderLatex(text) {
+  if (typeof katex === "undefined") return esc(text);
+
+  const cached = latexCache.get(text);
+  if (cached !== undefined) return cached;
+
+  let result = esc(text);
+
+  // Display math: $$...$$
+  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+    try {
+      return katex.renderToString(unesc(math), { displayMode: true, throwOnError: false });
+    } catch { return `<span class="latex-error">$$${math}$$</span>`; }
+  });
+
+  // Inline math: $...$  (but not \$)
+  result = result.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, math) => {
+    try {
+      return katex.renderToString(unesc(math), { displayMode: false, throwOnError: false });
+    } catch { return `<span class="latex-error">$${math}$</span>`; }
+  });
+
+  // \section{...}
+  result = result.replace(/\\section\{([^}]*)\}/g, '<span class="latex-section">$1</span>');
+
+  // \subsection{...}
+  result = result.replace(/\\subsection\{([^}]*)\}/g, '<span class="latex-subsection">$1</span>');
+
+  // \textbf{...}
+  result = result.replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>');
+
+  // \textit{...}
+  result = result.replace(/\\textit\{([^}]*)\}/g, '<em>$1</em>');
+
+  // \underline{...}
+  result = result.replace(/\\underline\{([^}]*)\}/g, '<u>$1</u>');
+
+  // \emph{...}
+  result = result.replace(/\\emph\{([^}]*)\}/g, '<em>$1</em>');
+
+  // LaTeX escape sequences: \% \$ \& \# \_ \{ \}
+  result = result.replace(/\\%/g, '%');
+  result = result.replace(/\\\$/g, '$');
+  result = result.replace(/\\&amp;/g, '&amp;');  // esc() turned & into &amp;
+  result = result.replace(/\\#/g, '#');
+  result = result.replace(/\\_/g, '_');
+  result = result.replace(/\\\{/g, '{');
+  result = result.replace(/\\\}/g, '}');
+
+  // Typographic dashes: --- → em dash, -- → en dash (order matters)
+  result = result.replace(/---/g, '\u2014');
+  result = result.replace(/--/g, '\u2013');
+
+  // ~ → non-breaking space (LaTeX tie)
+  result = result.replace(/~/g, '&nbsp;');
+
+  // Catch-all: remaining \command{...} or \command → grey pill
+  result = result.replace(/\\([a-zA-Z]+)\{([^}]*)\}/g,
+    (m, cmd, arg) => `<span class="latex-markup">\\${cmd}{${arg}}</span>`);
+  result = result.replace(/\\([a-zA-Z]+)(?![{a-zA-Z])/g,
+    (m, cmd) => `<span class="latex-markup">\\${cmd}</span>`);
+
+  // Cap cache size
+  if (latexCache.size > 500) latexCache.clear();
+  latexCache.set(text, result);
+  return result;
+}
+
+function unesc(html) {
+  const el = document.createElement("textarea");
+  el.innerHTML = html;
+  return el.value;
 }
 
 // ── Init ───────────────────────────────────────────────
@@ -1634,6 +2431,18 @@ document.addEventListener("mousedown", function(e) {
   if (toolbar.contains(e.target) || card.contains(e.target)) return;
   if (toolbar.classList.contains("visible") && !card.classList.contains("visible")) {
     hideSelectionToolbar();
+  }
+});
+
+// Toggle Source/Normal mode with Cmd+Shift+M (Mac) / Ctrl+Shift+M
+document.addEventListener("keydown", function(e) {
+  if (e.key === "M" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    if (state.paragraphs.length === 0) return;
+    state.viewMode = state.viewMode === "source" ? "normal" : "source";
+    state.editingPara = null;
+    latexCache.clear();
+    render();
   }
 });
 

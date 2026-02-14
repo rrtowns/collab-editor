@@ -107,9 +107,10 @@ app.delete("/api/documents/:id", (req, res) => {
 });
 
 app.post("/api/revise", async (req, res) => {
-  const { paragraphs, comments, model, globalInstruction, attachments } = req.body;
+  const { paragraphs, comments, model, globalInstruction, attachments, focusedMode, paragraphMap, scopeMode } = req.body;
 
-  if (!paragraphs || (!comments?.length && !globalInstruction?.trim())) {
+  const hasParagraphs = focusedMode ? paragraphMap?.length > 0 : paragraphs?.length > 0;
+  if (!hasParagraphs || (!comments?.length && !globalInstruction?.trim())) {
     return res.status(400).json({ error: "Missing paragraphs or revision instructions" });
   }
 
@@ -124,22 +125,53 @@ app.post("/api/revise", async (req, res) => {
 
   // Build the prompt
   let docDescription = "";
-  paragraphs.forEach((para, i) => {
-    const paraComments = (comments || []).filter((c) => c.paraIndex === i);
-    docDescription += `Paragraph ${i + 1}: ${para}\n`;
-    if (paraComments.length > 0) {
-      paraComments.forEach((c) => {
-        docDescription += `  → Comment on "${c.selectedText}": ${c.comment}\n`;
-      });
-    }
-    docDescription += "\n";
-  });
+
+  // Track valid indices for validation
+  let validIndices;
+  let paragraphLookup; // index → text
+
+  if (focusedMode && paragraphMap) {
+    // Focused mode: only include paragraphs from paragraphMap, labeled by real index
+    validIndices = new Set(paragraphMap.map(p => p.index));
+    paragraphLookup = new Map(paragraphMap.map(p => [p.index, p.text]));
+
+    paragraphMap.forEach(({ index, text }) => {
+      const paraComments = (comments || []).filter((c) => c.paraIndex === index);
+      docDescription += `Paragraph ${index + 1}: ${text}\n`;
+      if (paraComments.length > 0) {
+        paraComments.forEach((c) => {
+          docDescription += `  → Comment on "${c.selectedText}": ${c.comment}\n`;
+        });
+      }
+      docDescription += "\n";
+    });
+
+    const subsetScope = (scopeMode === "section" || scopeMode === "subsection") ? scopeMode : "focused";
+    console.log(`  → ${subsetScope} subset mode: sending ${paragraphMap.length} of document's paragraphs (indices: ${paragraphMap.map(p => p.index).join(", ")})`);
+  } else {
+    // Full mode: include all paragraphs sequentially
+    validIndices = new Set(paragraphs.map((_, i) => i));
+    paragraphLookup = new Map(paragraphs.map((text, i) => [i, text]));
+
+    paragraphs.forEach((para, i) => {
+      const paraComments = (comments || []).filter((c) => c.paraIndex === i);
+      docDescription += `Paragraph ${i + 1}: ${para}\n`;
+      if (paraComments.length > 0) {
+        paraComments.forEach((c) => {
+          docDescription += `  → Comment on "${c.selectedText}": ${c.comment}\n`;
+        });
+      }
+      docDescription += "\n";
+    });
+
+    console.log(`  → Full mode: sending all ${paragraphs.length} paragraphs`);
+  }
 
   if (globalInstruction?.trim()) {
     docDescription += `\nGlobal instruction (apply to the ENTIRE document): ${globalInstruction.trim()}\n`;
   }
 
-  const systemPrompt = `You are a collaborative writing assistant. The user will provide a document with inline comments on specific words, phrases, or sentences, and/or a global instruction that applies to the entire document. Reference documents (such as style guides or source material) may be attached as PDF files — use them as context when making revisions. Your job is to suggest revisions based on these inputs.
+  let systemPrompt = `You are a collaborative writing assistant. The user will provide a document with inline comments on specific words, phrases, or sentences, and/or a global instruction that applies to the entire document. Reference documents (such as style guides or source material) may be attached as PDF files — use them as context when making revisions. Your job is to suggest revisions based on these inputs.
 
 Return a JSON array of changes. Each change must specify:
 - "paraIndex": the 0-based paragraph index
@@ -158,6 +190,11 @@ Return ONLY valid JSON. No markdown, no explanation, no code fences. Just the JS
 
 Example response:
 [{"paraIndex": 2, "oldText": "walked slowly", "newText": "ambled"}]`;
+
+  if (focusedMode && paragraphMap) {
+    const subsetScope = (scopeMode === "section" || scopeMode === "subsection") ? scopeMode : "focused";
+    systemPrompt += `\n\nNote: You are seeing a ${subsetScope} subset of paragraphs from a larger document. The paragraph numbers are their positions in the full document. Only suggest changes to the paragraphs shown.`;
+  }
 
   const selectedModel = ALLOWED_MODELS.includes(model) ? model : ALLOWED_MODELS[0];
   console.log(`  → Using model: ${selectedModel}`);
@@ -191,7 +228,7 @@ Example response:
 
     const changes = JSON.parse(jsonStr);
 
-    // Validate changes
+    // Validate changes against valid indices
     const validChanges = changes.filter((c) => {
       if (
         typeof c.paraIndex !== "number" ||
@@ -199,8 +236,9 @@ Example response:
         typeof c.newText !== "string"
       )
         return false;
-      if (c.paraIndex < 0 || c.paraIndex >= paragraphs.length) return false;
-      if (!paragraphs[c.paraIndex].includes(c.oldText)) return false;
+      if (!validIndices.has(c.paraIndex)) return false;
+      const paraText = paragraphLookup.get(c.paraIndex);
+      if (!paraText || !paraText.includes(c.oldText)) return false;
       return true;
     });
 
