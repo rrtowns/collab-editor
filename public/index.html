@@ -89,6 +89,11 @@
       margin: 0 0 24px 0; white-space: pre-wrap;
     }
     .paragraph[contenteditable="true"] { outline: none; }
+    .paragraph[contenteditable="true"]:empty::before {
+      content: "Start writing here...";
+      color: #94a3b8; font-style: italic;
+      pointer-events: none;
+    }
 
     /* Highlights */
     .highlight {
@@ -342,11 +347,138 @@
     .global-bar textarea:focus { border-color: #6366f1; }
     .global-bar textarea::placeholder { color: #94a3b8; }
 
+    /* Attachments */
+    .attachments-bar {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .attach-btn {
+      font-size: 12px; font-weight: 500; color: #6366f1;
+      background: none; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; padding: 0;
+    }
+    .attach-btn:hover { text-decoration: underline; }
+    .attach-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; font-size: 12px; font-weight: 500;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.18);
+      border-radius: 14px; color: #475569;
+    }
+    .attach-chip-remove {
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: 14px; padding: 0; line-height: 1;
+    }
+    .attach-chip-remove:hover { color: #dc2626; }
+
     /* Document column wrapper */
     .doc-column {
       flex: 1; min-width: 0;
       display: flex; flex-direction: column;
     }
+
+    /* Save status indicator */
+    .save-indicator {
+      font-size: 12px; font-weight: 500; margin-left: 10px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .save-indicator.saving { color: #7c3aed; }
+    .save-indicator.saved { color: #16a34a; }
+    .save-indicator.unsaved { color: #d97706; }
+    .save-indicator.error { color: #dc2626; }
+
+    /* Editable document title */
+    .header-title-input {
+      font-size: 15px; font-weight: 600; color: #1e293b;
+      border: 1px solid transparent; border-radius: 4px;
+      padding: 2px 6px; background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      outline: none; width: 220px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .header-title-input:hover { background: #f8fafc; border-color: #e2e8f0; }
+    .header-title-input:focus { background: #fff; border-color: #6366f1; }
+
+    /* Back button */
+    .btn-back {
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; padding: 4px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-back:hover { color: #475569; background: #f1f5f9; }
+
+    /* Document card grid */
+    .doc-grid-container {
+      max-width: 900px; margin: 40px auto 0; padding: 0 24px;
+    }
+    .doc-grid-container h3 {
+      font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 16px;
+    }
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 16px;
+    }
+    .doc-card {
+      background: #fff; border: 1px solid #e8e5e0; border-radius: 10px;
+      overflow: hidden; cursor: pointer; position: relative;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .doc-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+    .doc-card-new {
+      background: #fff; border: 2px dashed #d4d4d8; border-radius: 10px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; cursor: pointer; min-height: 180px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .doc-card-new:hover {
+      border-color: #8b5cf6;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.1);
+    }
+    .doc-card-new-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #f1f5f9; display: flex; align-items: center;
+      justify-content: center; font-size: 24px; color: #94a3b8;
+      margin-bottom: 8px; transition: background 0.2s, color 0.2s;
+    }
+    .doc-card-new:hover .doc-card-new-icon {
+      background: rgba(99,102,241,0.1); color: #6366f1;
+    }
+    .doc-card-new-label {
+      font-size: 13px; font-weight: 600; color: #94a3b8;
+      transition: color 0.2s;
+    }
+    .doc-card-new:hover .doc-card-new-label { color: #6366f1; }
+    .doc-card-preview {
+      height: 110px; padding: 12px 14px; background: #f9fafb;
+      overflow: hidden; font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 11px; line-height: 1.6; color: #64748b;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .doc-card-info {
+      padding: 10px 14px;
+    }
+    .doc-card-title {
+      font-size: 13px; font-weight: 600; color: #1e293b;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .doc-card-time {
+      font-size: 11px; color: #94a3b8; margin-top: 2px;
+    }
+    .doc-card-delete {
+      position: absolute; top: 6px; right: 6px;
+      background: #fff; border: 1px solid #e8e5e0; color: #94a3b8;
+      cursor: pointer; font-size: 14px; width: 24px; height: 24px;
+      border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; opacity: 0;
+      transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .doc-card:hover .doc-card-delete { opacity: 1; }
+    .doc-card-delete:hover { color: #dc2626; border-color: rgba(220,38,38,0.3); }
   </style>
 </head>
 <body>
@@ -391,8 +523,13 @@ let state = {
   colorCounter: 0,
   showBanner: true,
   globalInstruction: "",
+  attachments: [],    // { name, base64 }
   loading: false,
   toast: null,
+  docId: null,
+  docTitle: "Untitled",
+  saveStatus: null,   // "saving" | "saved" | "unsaved" | "error" | null
+  docList: null,      // cached document list for home view
 };
 
 const COLORS = [
@@ -421,24 +558,220 @@ function showToast(msg, isError) {
   setTimeout(() => { state.toast = null; render(); }, 3000);
 }
 
+function attachFile() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".pdf";
+  input.multiple = true;
+  input.onchange = (e) => {
+    Array.from(e.target.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(",")[1];
+        state.attachments.push({ name: file.name, base64 });
+        scheduleSave();
+        render();
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+  input.click();
+}
+
+function removeAttachment(index) {
+  state.attachments.splice(index, 1);
+  scheduleSave();
+  render();
+}
+
+// ── Persistence helpers ────────────────────────────────
+function getSaveableState() {
+  return {
+    paragraphs: state.paragraphs,
+    comments: state.comments,
+    globalInstruction: state.globalInstruction,
+    attachments: state.attachments,
+    model: state.model,
+    colorCounter: state.colorCounter,
+  };
+}
+
+let saveTimer = null;
+
+function scheduleSave() {
+  if (!state.docId) return;
+  state.saveStatus = "unsaved";
+  updateSaveIndicator();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(performSave, 1500);
+}
+
+async function performSave() {
+  if (!state.docId) return;
+  state.saveStatus = "saving";
+  updateSaveIndicator();
+  try {
+    const res = await fetch(`/api/documents/${state.docId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: state.docTitle, content: getSaveableState() }),
+    });
+    if (!res.ok) throw new Error("Save failed");
+    state.saveStatus = "saved";
+  } catch {
+    state.saveStatus = "error";
+  }
+  updateSaveIndicator();
+}
+
+function updateSaveIndicator() {
+  const el = document.getElementById("save-indicator");
+  if (!el) return;
+  const labels = { saving: "Saving…", saved: "Saved", unsaved: "Unsaved", error: "Save failed" };
+  if (!state.saveStatus) { el.textContent = ""; el.className = "save-indicator"; return; }
+  el.textContent = labels[state.saveStatus] || "";
+  el.className = "save-indicator " + state.saveStatus;
+}
+
+// ── URL routing ────────────────────────────────────────
+function updateUrl(docId) {
+  const url = new URL(window.location);
+  if (docId) {
+    url.searchParams.set("doc", docId);
+  } else {
+    url.searchParams.delete("doc");
+  }
+  history.replaceState(null, "", url);
+}
+
+// ── Document list ──────────────────────────────────────
+async function fetchDocList() {
+  try {
+    const res = await fetch("/api/documents");
+    state.docList = await res.json();
+  } catch {
+    state.docList = [];
+  }
+  render();
+}
+
+async function openDocument(id) {
+  try {
+    const res = await fetch(`/api/documents/${id}`);
+    if (!res.ok) throw new Error("Not found");
+    const doc = await res.json();
+    const c = doc.content || {};
+    state.paragraphs = c.paragraphs || [];
+    state.comments = c.comments || [];
+    state.globalInstruction = c.globalInstruction || "";
+    state.attachments = c.attachments || [];
+    state.model = c.model || "claude-sonnet-4-5-20250929";
+    state.colorCounter = c.colorCounter || 0;
+    state.docId = doc.id;
+    state.docTitle = doc.title;
+    state.activeCommentId = null;
+    state.pendingSelection = null;
+    state.saveStatus = "saved";
+    state.showBanner = false;
+    state.docList = null;
+    // Restore changeIdCounter from loaded segments
+    let maxId = 0;
+    state.paragraphs.forEach(p => {
+      p.segments.forEach(s => {
+        if (s.type === "change" && s.id) {
+          const num = parseInt(s.id.replace("ch", ""), 10);
+          if (num > maxId) maxId = num;
+        }
+      });
+    });
+    changeIdCounter = maxId;
+    updateUrl(doc.id);
+    render();
+  } catch {
+    showToast("Could not open document", true);
+  }
+}
+
+async function deleteDocument(id, event) {
+  event.stopPropagation();
+  if (!confirm("Delete this document?")) return;
+  try {
+    await fetch(`/api/documents/${id}`, { method: "DELETE" });
+    if (state.docList) state.docList = state.docList.filter(d => d.id !== id);
+    render();
+  } catch {
+    showToast("Could not delete document", true);
+  }
+}
+
+function formatRelativeTime(dateStr) {
+  const date = new Date(dateStr + "Z"); // SQLite datetime is UTC
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min${diffMin !== 1 ? "s" : ""} ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr !== 1 ? "s" : ""} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return "yesterday";
+  if (diffDay < 30) return `${diffDay} days ago`;
+  return date.toLocaleDateString();
+}
+
 // ── Document loading ───────────────────────────────────
-function loadText(text) {
+async function loadText(text) {
   const content = text.trim();
   if (!content) return;
   state.paragraphs = [{ segments: [{ type: "text", content }] }];
   state.comments = [];
   state.activeCommentId = null;
   state.showBanner = true;
+  state.docTitle = "Untitled";
+  state.docList = null;
+  // Create doc on server
+  try {
+    const res = await fetch("/api/documents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: state.docTitle, content: getSaveableState() }),
+    });
+    const doc = await res.json();
+    state.docId = doc.id;
+    state.saveStatus = "saved";
+    updateUrl(doc.id);
+  } catch {
+    state.saveStatus = "error";
+  }
   render();
 }
 
-function loadSampleDoc() {
-  const content = SAMPLE_DOC.join("\n\n");
-  state.paragraphs = [{ segments: [{ type: "text", content }] }];
+async function createBlankDocument() {
+  state.paragraphs = [{ segments: [{ type: "text", content: "" }] }];
   state.comments = [];
   state.activeCommentId = null;
   state.showBanner = true;
+  state.docTitle = "Untitled";
+  state.docList = null;
+  try {
+    const res = await fetch("/api/documents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: state.docTitle, content: getSaveableState() }),
+    });
+    const doc = await res.json();
+    state.docId = doc.id;
+    state.saveStatus = "saved";
+    updateUrl(doc.id);
+  } catch {
+    state.saveStatus = "error";
+  }
   render();
+}
+
+async function loadSampleDoc() {
+  await loadText(SAMPLE_DOC.join("\n\n"));
 }
 
 function loadFile() {
@@ -455,14 +788,22 @@ function loadFile() {
   input.click();
 }
 
-function newDocument() {
+async function newDocument() {
+  // Flush any pending save
+  if (saveTimer) { clearTimeout(saveTimer); await performSave(); }
   state.paragraphs = [];
   state.comments = [];
   state.activeCommentId = null;
   state.pendingSelection = null;
+  state.docId = null;
+  state.docTitle = "Untitled";
+  state.saveStatus = null;
+  state.globalInstruction = "";
+  state.attachments = [];
   hideSelectionToolbar();
   state.showBanner = true;
-  render();
+  updateUrl(null);
+  fetchDocList();
 }
 
 // ── Actions ────────────────────────────────────────────
@@ -475,6 +816,7 @@ function acceptChange(changeId) {
       return s;
     });
   });
+  scheduleSave();
   render();
   setTimeout(() => {
     state.paragraphs.forEach(p => {
@@ -495,6 +837,7 @@ function rejectChange(changeId) {
       return s;
     });
   });
+  scheduleSave();
   render();
 }
 
@@ -506,6 +849,7 @@ function acceptAll() {
       return s;
     });
   });
+  scheduleSave();
   render();
   setTimeout(() => {
     state.paragraphs.forEach(p => {
@@ -526,6 +870,7 @@ function rejectAll() {
       return s;
     });
   });
+  scheduleSave();
   render();
 }
 
@@ -546,12 +891,14 @@ function addComment(comment) {
   state.pendingSelection = null;
   hideSelectionToolbar();
   window.getSelection()?.removeAllRanges();
+  scheduleSave();
   render();
 }
 
 function deleteComment(id) {
   state.comments = state.comments.filter(c => c.id !== id);
   state.activeCommentId = null;
+  scheduleSave();
   render();
 }
 
@@ -579,6 +926,7 @@ async function requestRevision() {
       model: state.model,
     };
     if (hasGlobal) body.globalInstruction = state.globalInstruction.trim();
+    if (state.attachments.length > 0) body.attachments = state.attachments;
 
     const res = await fetch("/api/revise", {
       method: "POST",
@@ -653,6 +1001,7 @@ async function requestRevision() {
     } else {
       showToast(`${appliedCount} revision${appliedCount > 1 ? "s" : ""} applied`);
     }
+    scheduleSave();
   } catch (err) {
     showToast("Network error — is the server running?", true);
   }
@@ -675,6 +1024,8 @@ function handleInput(e) {
 
   const newText = node.innerText;
   para.segments = [{ type: "text", content: newText }];
+
+  scheduleSave();
 
   // Remove comments on this paragraph (offsets are now invalid)
   const hadComments = state.comments.some(c => c.paraIndex === pi);
@@ -998,10 +1349,26 @@ function render() {
 
   // Header
   html += `<div class="header">
-    <div class="header-left">
-      <div class="logo">C</div>
-      <span class="header-title">Collaborative Editor</span>
-      <span class="header-status">`;
+    <div class="header-left">`;
+  if (state.docId) {
+    html += `<button class="btn-back" onclick="newDocument()" title="All documents">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+    </button>`;
+  }
+  html += `<div class="logo">C</div>`;
+  if (state.docId) {
+    html += `<input class="header-title-input" id="doc-title-input" value="${esc(state.docTitle)}"
+      oninput="state.docTitle=this.value;scheduleSave()"
+      onblur="scheduleSave()"
+      spellcheck="false">`;
+    const saveLabels = { saving: "Saving…", saved: "Saved", unsaved: "Unsaved", error: "Save failed" };
+    html += `<span class="save-indicator ${state.saveStatus || ''}" id="save-indicator">${saveLabels[state.saveStatus] || ''}</span>`;
+  } else {
+    html += `<span class="header-title">Collaborative Editor</span>`;
+  }
+  html += `<span class="header-status">`;
   if (state.comments.length > 0) html += `${state.comments.length} comment${state.comments.length !== 1 ? "s" : ""}`;
   if (state.comments.length > 0 && pendingCount > 0) html += " · ";
   if (pendingCount > 0) html += `${pendingCount} change${pendingCount !== 1 ? "s" : ""}`;
@@ -1012,6 +1379,7 @@ function render() {
       <option value="claude-sonnet-4-5-20250929"${state.model === "claude-sonnet-4-5-20250929" ? " selected" : ""}>Sonnet 4.5</option>
       <option value="claude-opus-4-6"${state.model === "claude-opus-4-6" ? " selected" : ""}>Opus 4.6</option>
     </select>`;
+    html += `<button class="btn btn-new" onclick="loadFile()">Load File</button>`;
     html += `<button class="btn btn-new" onclick="newDocument()">New</button>`;
   }
   if (pendingCount > 0) {
@@ -1025,19 +1393,32 @@ function render() {
   html += `</div></div>`;
 
 
-  // Empty state
+  // Home page — card grid + start fresh
   if (state.paragraphs.length === 0) {
-    html += `<div class="empty-state">
-      <div class="empty-state-icon">C</div>
-      <h2>Collaborative Editor</h2>
-      <p>Paste your text below, load a file, or start with a sample document.</p>
-      <textarea id="paste-input" placeholder="Paste or type your document text here..."></textarea>
-      <div class="empty-state-actions">
-        <button class="btn-load-text" onclick="const t=document.getElementById('paste-input').value;if(t.trim())loadText(t)">Load Text</button>
-        <button class="btn-load-file" onclick="loadFile()">Load File</button>
-        <button class="btn-sample" onclick="loadSampleDoc()">Use Sample Document</button>
-      </div>
-    </div>`;
+    html += `<div class="doc-grid-container">
+      <h3>Recent documents</h3>
+      <div class="doc-grid">
+        <div class="doc-card-new" onclick="createBlankDocument()">
+          <div class="doc-card-new-icon">+</div>
+          <div class="doc-card-new-label">New document</div>
+        </div>
+        <div class="doc-card-new" onclick="loadSampleDoc()">
+          <div class="doc-card-new-icon">+</div>
+          <div class="doc-card-new-label">Sample document</div>
+        </div>`;
+    if (state.docList && state.docList.length > 0) {
+      state.docList.forEach(d => {
+        html += `<div class="doc-card" onclick="openDocument(${d.id})">
+          <div class="doc-card-preview">${esc(d.preview || '')}</div>
+          <div class="doc-card-info">
+            <div class="doc-card-title">${esc(d.title)}</div>
+            <div class="doc-card-time">${formatRelativeTime(d.updated_at)}</div>
+          </div>
+          <button class="doc-card-delete" onclick="deleteDocument(${d.id}, event)" title="Delete">&times;</button>
+        </div>`;
+      });
+    }
+    html += `</div></div>`;
   }
 
   if (state.paragraphs.length > 0) {
@@ -1047,10 +1428,21 @@ function render() {
   // Document column (global bar + document)
   html += `<div class="doc-column">`;
 
+  // Attachments
+  html += `<div class="attachments-bar">`;
+  html += `<button class="attach-btn" onclick="attachFile()">+ Attach PDF</button>`;
+  state.attachments.forEach((a, i) => {
+    html += `<span class="attach-chip">
+      <span>${esc(a.name)}</span>
+      <button class="attach-chip-remove" onclick="removeAttachment(${i})">×</button>
+    </span>`;
+  });
+  html += `</div>`;
+
   // Global instructions
   html += `<div class="global-bar">
     <textarea id="global-input" placeholder="Describe a change to apply across the entire document..."
-      oninput="state.globalInstruction=this.value;var b=document.getElementById('btn-revise');if(b)b.disabled=!this.value.trim()&&state.comments.length===0">${esc(state.globalInstruction)}</textarea>
+      oninput="state.globalInstruction=this.value;scheduleSave();var b=document.getElementById('btn-revise');if(b)b.disabled=!this.value.trim()&&state.comments.length===0">${esc(state.globalInstruction)}</textarea>
   </div>`;
 
   // Document
@@ -1204,7 +1596,34 @@ function esc(str) {
 }
 
 // ── Init ───────────────────────────────────────────────
-render();
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const docParam = params.get("doc");
+  if (docParam) {
+    await openDocument(parseInt(docParam, 10));
+  } else {
+    fetchDocList();
+    render();
+  }
+})();
+
+// Warn on close if save is pending
+window.addEventListener("beforeunload", (e) => {
+  if (state.saveStatus === "unsaved" || state.saveStatus === "saving") {
+    e.preventDefault();
+  }
+});
+
+// Browser back/forward
+window.addEventListener("popstate", () => {
+  const params = new URLSearchParams(window.location.search);
+  const docParam = params.get("doc");
+  if (docParam) {
+    openDocument(parseInt(docParam, 10));
+  } else {
+    newDocument();
+  }
+});
 
 // Document-level listeners (persist across render cycles)
 document.addEventListener("mouseup", handleMouseUp);
