@@ -46,6 +46,169 @@ const ALLOWED_MODELS = [
   "claude-opus-4-6",
 ];
 
+function normalizeLooseChar(ch) {
+  if (ch === "\u2018" || ch === "\u2019" || ch === "\u0060" || ch === "\u00B4") return "'";
+  if (ch === "\u201C" || ch === "\u201D") return "\"";
+  if (ch === "\u2013" || ch === "\u2014" || ch === "\u2212") return "-";
+  if (ch === "\u00A0") return " ";
+  return ch;
+}
+
+function buildLooseTextWithSpans(text) {
+  const out = [];
+  const spans = [];
+
+  let i = 0;
+  while (i < text.length) {
+    let ch = normalizeLooseChar(text[i]);
+
+    if (/\s/.test(ch)) {
+      const runStart = i;
+      i++;
+      while (i < text.length) {
+        const next = normalizeLooseChar(text[i]);
+        if (!/\s/.test(next)) break;
+        i++;
+      }
+      if (out.length === 0 || out[out.length - 1] !== " ") {
+        out.push(" ");
+        spans.push({ start: runStart, end: i });
+      }
+      continue;
+    }
+
+    out.push(ch);
+    spans.push({ start: i, end: i + 1 });
+    i++;
+  }
+
+  return { text: out.join(""), spans };
+}
+
+function resolveOldTextFromParagraph(paraText, proposedOldText, paraComments) {
+  if (!paraText || typeof paraText !== "string") return null;
+  if (typeof proposedOldText === "string" && proposedOldText.length > 0 && paraText.includes(proposedOldText)) {
+    return proposedOldText;
+  }
+
+  if (typeof proposedOldText === "string" && proposedOldText.length > 0) {
+    const paraLoose = buildLooseTextWithSpans(paraText);
+    const oldLoose = buildLooseTextWithSpans(proposedOldText).text.trim();
+    if (oldLoose.length > 0) {
+      const searchIn = paraLoose.text;
+      const looseIdx = searchIn.indexOf(oldLoose);
+      if (looseIdx !== -1) {
+        const startSpan = paraLoose.spans[looseIdx];
+        const endSpan = paraLoose.spans[looseIdx + oldLoose.length - 1];
+        if (startSpan && endSpan && endSpan.end > startSpan.start) {
+          return paraText.slice(startSpan.start, endSpan.end);
+        }
+      }
+    }
+  }
+
+  const paraCommentList = Array.isArray(paraComments) ? paraComments : [];
+  if (paraCommentList.length === 1) {
+    const c = paraCommentList[0];
+
+    if (
+      Number.isInteger(c?.start) &&
+      Number.isInteger(c?.end) &&
+      c.start >= 0 &&
+      c.end > c.start &&
+      c.end <= paraText.length
+    ) {
+      const slice = paraText.slice(c.start, c.end);
+      if (slice.length > 0) return slice;
+    }
+
+    if (typeof c?.selectedText === "string" && c.selectedText.length > 0 && paraText.includes(c.selectedText)) {
+      return c.selectedText;
+    }
+  }
+
+  return null;
+}
+
+function formatPromptCommentLine(comment) {
+  const selectedText = typeof comment?.selectedText === "string" ? comment.selectedText : "";
+  const instruction = typeof comment?.comment === "string" ? comment.comment : "";
+  const hasSpan = Number.isInteger(comment?.start) && Number.isInteger(comment?.end) && comment.end > comment.start;
+  const spanSuffix = hasSpan ? ` [chars ${comment.start}-${comment.end}]` : "";
+  return `  → Comment on "${selectedText}"${spanSuffix}: ${instruction}\n`;
+}
+
+function findUniqueParagraphByExactText(paragraphLookup, validIndices, text) {
+  if (typeof text !== "string" || text.length === 0) return null;
+  const matches = [];
+  for (const idx of validIndices) {
+    const paraText = paragraphLookup.get(idx);
+    if (typeof paraText === "string" && paraText.includes(text)) matches.push(idx);
+    if (matches.length > 1) return null;
+  }
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function findUniqueParagraphByLooseText(paragraphLookup, validIndices, text) {
+  if (typeof text !== "string" || text.trim().length === 0) return null;
+  const target = buildLooseTextWithSpans(text).text.trim();
+  if (!target) return null;
+
+  const matches = [];
+  for (const idx of validIndices) {
+    const paraText = paragraphLookup.get(idx);
+    if (typeof paraText !== "string" || paraText.length === 0) continue;
+    const paraLoose = buildLooseTextWithSpans(paraText).text;
+    if (paraLoose.includes(target)) matches.push(idx);
+    if (matches.length > 1) return null;
+  }
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function remapUnresolvedChange(change, context) {
+  const { paragraphLookup, validIndices, commentsByPara, allComments } = context;
+
+  // Strongest anchor: if there is exactly one inline comment, honor that anchor.
+  if (Array.isArray(allComments) && allComments.length === 1) {
+    const anchor = allComments[0];
+    const anchorParaText = paragraphLookup.get(anchor.paraIndex);
+    const anchored = resolveOldTextFromParagraph(
+      anchorParaText,
+      change.oldText,
+      commentsByPara.get(anchor.paraIndex) || [anchor]
+    ) || resolveOldTextFromParagraph(
+      anchorParaText,
+      anchor.selectedText,
+      commentsByPara.get(anchor.paraIndex) || [anchor]
+    );
+    if (anchored) {
+      return {
+        paraIndex: anchor.paraIndex,
+        oldText: anchored,
+        reason: "single-comment-anchor",
+      };
+    }
+  }
+
+  // If oldText uniquely appears in one included paragraph, remap there.
+  const exactIdx = findUniqueParagraphByExactText(paragraphLookup, validIndices, change.oldText);
+  if (exactIdx !== null) {
+    const paraText = paragraphLookup.get(exactIdx);
+    const resolved = resolveOldTextFromParagraph(paraText, change.oldText, commentsByPara.get(exactIdx) || []);
+    if (resolved) return { paraIndex: exactIdx, oldText: resolved, reason: "unique-exact" };
+  }
+
+  // Fallback: unique loose-normalized match.
+  const looseIdx = findUniqueParagraphByLooseText(paragraphLookup, validIndices, change.oldText);
+  if (looseIdx !== null) {
+    const paraText = paragraphLookup.get(looseIdx);
+    const resolved = resolveOldTextFromParagraph(paraText, change.oldText, commentsByPara.get(looseIdx) || []);
+    if (resolved) return { paraIndex: looseIdx, oldText: resolved, reason: "unique-loose" };
+  }
+
+  return null;
+}
+
 // ── Document API ───────────────────────────────────────
 app.get("/api/documents", (req, res) => {
   const docs = stmts.listDocs.all();
@@ -129,6 +292,13 @@ app.post("/api/revise", async (req, res) => {
   // Track valid indices for validation
   let validIndices;
   let paragraphLookup; // index → text
+  const commentsByPara = new Map();
+
+  for (const c of comments || []) {
+    if (!c || typeof c.paraIndex !== "number") continue;
+    if (!commentsByPara.has(c.paraIndex)) commentsByPara.set(c.paraIndex, []);
+    commentsByPara.get(c.paraIndex).push(c);
+  }
 
   if (focusedMode && paragraphMap) {
     // Focused mode: only include paragraphs from paragraphMap, labeled by real index
@@ -136,11 +306,11 @@ app.post("/api/revise", async (req, res) => {
     paragraphLookup = new Map(paragraphMap.map(p => [p.index, p.text]));
 
     paragraphMap.forEach(({ index, text }) => {
-      const paraComments = (comments || []).filter((c) => c.paraIndex === index);
+      const paraComments = commentsByPara.get(index) || [];
       docDescription += `Paragraph ${index + 1}: ${text}\n`;
       if (paraComments.length > 0) {
         paraComments.forEach((c) => {
-          docDescription += `  → Comment on "${c.selectedText}": ${c.comment}\n`;
+          docDescription += formatPromptCommentLine(c);
         });
       }
       docDescription += "\n";
@@ -154,11 +324,11 @@ app.post("/api/revise", async (req, res) => {
     paragraphLookup = new Map(paragraphs.map((text, i) => [i, text]));
 
     paragraphs.forEach((para, i) => {
-      const paraComments = (comments || []).filter((c) => c.paraIndex === i);
+      const paraComments = commentsByPara.get(i) || [];
       docDescription += `Paragraph ${i + 1}: ${para}\n`;
       if (paraComments.length > 0) {
         paraComments.forEach((c) => {
-          docDescription += `  → Comment on "${c.selectedText}": ${c.comment}\n`;
+          docDescription += formatPromptCommentLine(c);
         });
       }
       docDescription += "\n";
@@ -171,7 +341,7 @@ app.post("/api/revise", async (req, res) => {
     docDescription += `\nGlobal instruction (apply to the ENTIRE document): ${globalInstruction.trim()}\n`;
   }
 
-  let systemPrompt = `You are a collaborative writing assistant. The user will provide a document with inline comments on specific words, phrases, or sentences, and/or a global instruction that applies to the entire document. Reference documents (such as style guides or source material) may be attached as PDF files — use them as context when making revisions. Your job is to suggest revisions based on these inputs.
+  let systemPrompt = `You are a collaborative writing assistant. The user will provide a document with inline comments on specific words, phrases, or sentences, and/or a global instruction that applies to the entire document. Reference files (such as style guides or source material) may be attached as PDF or text files — use them as context when making revisions. Your job is to suggest revisions based on these inputs.
 
 Return a JSON array of changes. Each change must specify:
 - "paraIndex": the 0-based paragraph index
@@ -184,6 +354,7 @@ Rules:
 - The "oldText" must be an exact substring of the paragraph text.
 - If a comment asks you to change/replace/rewrite specific text, revise just that text.
 - If a comment gives a general instruction (e.g. "make more vivid"), apply it to the commented span only.
+- If a comment includes quoted selected text, use that exact selected text as "oldText" unless the user explicitly asks for a wider rewrite.
 - If there is both a global instruction and inline comments, apply both.
 
 Return ONLY valid JSON. No markdown, no explanation, no code fences. Just the JSON array.
@@ -200,6 +371,45 @@ Example response:
   console.log(`  → Using model: ${selectedModel}`);
 
   try {
+    const MAX_TEXT_FILE_CHARS = 50000;
+    const fileBlocks = [];
+    let pdfCount = 0;
+    let textFileCount = 0;
+
+    for (const a of attachments || []) {
+      if (!a || typeof a !== "object") continue;
+
+      if (typeof a.base64 === "string" && a.base64.length > 0) {
+        fileBlocks.push({
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: a.mimeType || "application/pdf",
+            data: a.base64,
+          },
+        });
+        pdfCount++;
+        continue;
+      }
+
+      if (typeof a.text === "string" && a.text.trim().length > 0) {
+        const fileName = typeof a.name === "string" && a.name.trim().length > 0 ? a.name.trim() : "Text file";
+        let textContent = a.text;
+        if (textContent.length > MAX_TEXT_FILE_CHARS) {
+          textContent = `${textContent.slice(0, MAX_TEXT_FILE_CHARS)}\n\n[File truncated to ${MAX_TEXT_FILE_CHARS} characters.]`;
+        }
+        fileBlocks.push({
+          type: "text",
+          text: `Reference file (${fileName}):\n${textContent}`,
+        });
+        textFileCount++;
+      }
+    }
+
+    if (pdfCount > 0 || textFileCount > 0) {
+      console.log(`  → Reference files: ${pdfCount} PDF, ${textFileCount} text`);
+    }
+
     const message = await client.messages.create({
       model: selectedModel,
       max_tokens: 2048,
@@ -208,10 +418,7 @@ Example response:
         {
           role: "user",
           content: [
-            ...(attachments || []).map(a => ({
-              type: "document",
-              source: { type: "base64", media_type: "application/pdf", data: a.base64 },
-            })),
+            ...fileBlocks,
             { type: "text", text: `Here is my document with comments. Please suggest revisions:\n\n${docDescription}` },
           ],
         },
@@ -226,21 +433,98 @@ Example response:
       jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     }
 
-    const changes = JSON.parse(jsonStr);
+    const parsed = JSON.parse(jsonStr);
+    const changes = Array.isArray(parsed) ? parsed : [];
 
-    // Validate changes against valid indices
-    const validChanges = changes.filter((c) => {
+    // Validate and repair oldText when Claude is close-but-not-exact.
+    const validChanges = [];
+    let repairedCount = 0;
+    let droppedCount = 0;
+    let remappedCount = 0;
+    const dropStats = {
+      invalidShape: 0,
+      invalidIndex: 0,
+      missingParagraph: 0,
+      unresolvedOldText: 0,
+    };
+
+    for (const c of changes) {
       if (
-        typeof c.paraIndex !== "number" ||
-        typeof c.oldText !== "string" ||
-        typeof c.newText !== "string"
-      )
-        return false;
-      if (!validIndices.has(c.paraIndex)) return false;
-      const paraText = paragraphLookup.get(c.paraIndex);
-      if (!paraText || !paraText.includes(c.oldText)) return false;
-      return true;
-    });
+        typeof c?.paraIndex !== "number" ||
+        typeof c?.oldText !== "string" ||
+        typeof c?.newText !== "string"
+      ) {
+        dropStats.invalidShape++;
+        droppedCount++;
+        continue;
+      }
+      if (!validIndices.has(c.paraIndex)) {
+        dropStats.invalidIndex++;
+        droppedCount++;
+        continue;
+      }
+
+      let targetParaIndex = c.paraIndex;
+      let paraText = paragraphLookup.get(targetParaIndex);
+      if (typeof paraText !== "string" || paraText.length === 0) {
+        dropStats.missingParagraph++;
+        droppedCount++;
+        continue;
+      }
+
+      let resolvedOldText = resolveOldTextFromParagraph(
+        paraText,
+        c.oldText,
+        commentsByPara.get(targetParaIndex) || []
+      );
+      if (!resolvedOldText) {
+        const remapped = remapUnresolvedChange(c, {
+          paragraphLookup,
+          validIndices,
+          commentsByPara,
+          allComments: comments || [],
+        });
+        if (remapped && validIndices.has(remapped.paraIndex)) {
+          targetParaIndex = remapped.paraIndex;
+          paraText = paragraphLookup.get(targetParaIndex);
+          resolvedOldText = remapped.oldText;
+          remappedCount++;
+          console.log(
+            `  → Remapped change from para ${c.paraIndex} to ${targetParaIndex} (${remapped.reason})`
+          );
+        }
+      }
+
+      if (!resolvedOldText) {
+        dropStats.unresolvedOldText++;
+        console.log(
+          `  → Dropped change at para ${c.paraIndex}: oldText not resolved. ` +
+          `oldText="${String(c.oldText).slice(0, 120)}"`
+        );
+        droppedCount++;
+        continue;
+      }
+
+      if (resolvedOldText !== c.oldText) repairedCount++;
+      validChanges.push({
+        paraIndex: targetParaIndex,
+        oldText: resolvedOldText,
+        newText: c.newText,
+      });
+    }
+
+    if (repairedCount > 0 || droppedCount > 0 || remappedCount > 0) {
+      console.log(
+        `  → Revision validation: ${validChanges.length} accepted, ${repairedCount} repaired, ` +
+        `${remappedCount} remapped, ${droppedCount} dropped`
+      );
+      if (droppedCount > 0) {
+        console.log(
+          `  → Drop reasons: invalidShape=${dropStats.invalidShape}, invalidIndex=${dropStats.invalidIndex}, ` +
+          `missingParagraph=${dropStats.missingParagraph}, unresolvedOldText=${dropStats.unresolvedOldText}`
+        );
+      }
+    }
 
     res.json({ changes: validChanges });
   } catch (err) {

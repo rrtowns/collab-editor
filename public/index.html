@@ -60,6 +60,26 @@
     .btn-accept:disabled, .model-select:disabled {
       opacity: 0.5; cursor: not-allowed;
     }
+    .btn-header-jump {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%) scale(0.94);
+      color: #334155; background: #ffffff;
+      border: 1px solid #dbe1ea;
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+      font-size: 13px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 42px;
+      padding: 0 18px;
+      white-space: nowrap;
+      opacity: 0; pointer-events: none;
+      z-index: 11;
+      transition: opacity 0.15s ease, transform 0.18s ease;
+    }
+    .header.show-jump-top .btn-header-jump {
+      opacity: 1; pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
 
     /* Banner */
     .banner {
@@ -76,15 +96,118 @@
 
     /* Layout */
     .layout {
-      max-width: 1060px; margin: 20px auto;
+      max-width: 1320px; margin: 20px auto;
       display: flex; gap: 16px; align-items: flex-start;
     }
+    .layout.has-outline .control-column {
+      flex: 0 0 360px;
+      min-width: 360px;
+    }
+    .control-column {
+      flex: 0 0 220px; min-width: 220px;
+      align-self: stretch;
+    }
+    .control-panel {
+      position: sticky; top: 76px;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      padding: 14px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .control-title {
+      font-size: 11px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .control-group {
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .control-label {
+      font-size: 11px; font-weight: 600; color: #64748b;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .control-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 2px 0 4px;
+    }
+    .outline-shell {
+      border: 1px solid #dbe4f0;
+      border-radius: 14px;
+      padding: 8px 8px 8px 10px;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .outline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 340px;
+      max-height: 62vh;
+      overflow-y: auto;
+      padding: 6px 8px 6px 4px;
+      border-left: 2px solid #d5deea;
+    }
+    .outline-item {
+      --level-indent: 0px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #475569;
+      text-align: left;
+      border-radius: 10px;
+      padding: 9px 10px 9px calc(16px + var(--level-indent));
+      font-size: 16px;
+      line-height: 1.38;
+      cursor: pointer;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      position: relative;
+      display: block;
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+      letter-spacing: 0.01em;
+    }
+    .outline-item:hover {
+      background: rgba(99, 102, 241, 0.12);
+      color: #3730a3;
+    }
+    .outline-item.level-0 { --level-indent: 8px; font-weight: 700; font-size: 18px; }
+    .outline-item.level-1 { --level-indent: 28px; font-weight: 600; }
+    .outline-item.level-2 { --level-indent: 52px; font-weight: 500; font-size: 15px; }
+    .outline-item.level-3 { --level-indent: 76px; font-weight: 500; font-size: 14px; }
+    .outline-item.level-1::before,
+    .outline-item.level-2::before,
+    .outline-item.level-3::before {
+      content: "";
+      position: absolute;
+      left: calc(14px + var(--level-indent) - 16px);
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: #cbd5e1;
+    }
+    .outline-item.level-1::after,
+    .outline-item.level-2::after,
+    .outline-item.level-3::after {
+      content: "";
+      position: absolute;
+      left: calc(14px + var(--level-indent) - 16px);
+      top: 1.2em;
+      width: 10px;
+      border-top: 1px solid #cbd5e1;
+    }
+    .outline-item.active {
+      background: rgba(15, 118, 110, 0.12);
+      color: #0f766e;
+      font-weight: 700;
+    }
+    .control-panel .model-select { width: 100%; }
+    .control-panel .btn-revise { width: 100%; }
 
     /* Document */
     .document {
       padding: 48px 48px 80px; background: #fff;
       border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
       border: 1px solid #e8e5e0; min-height: 420px; cursor: text;
+      position: relative;
     }
     .paragraph {
       font-family: 'Source Serif 4', Georgia, serif;
@@ -99,11 +222,46 @@
       pointer-events: none;
     }
     .document[contenteditable="true"] { outline: none; }
+    .document .paragraph::selection {
+      background: #a8c8eb;
+      color: #1e293b;
+    }
+    .document .paragraph::-moz-selection {
+      background: #a8c8eb;
+      color: #1e293b;
+    }
+    .is-safari .document *::selection {
+      background: transparent;
+      color: inherit;
+    }
+    .is-safari .document *::-moz-selection {
+      background: transparent;
+      color: inherit;
+    }
+    .is-safari .safari-selection-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      user-select: none;
+      z-index: 0;
+    }
+    .is-safari .safari-selection-rect {
+      position: absolute;
+      background: #a8c8eb;
+    }
+    .is-safari .document .paragraph {
+      position: relative;
+      z-index: 1;
+    }
 
     /* Highlights */
     .highlight {
       border-radius: 2px; cursor: pointer; padding: 1px 0;
       transition: outline 0.15s ease;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
     }
     .highlight.active { outline-offset: 1px; }
 
@@ -224,17 +382,84 @@
       border-radius: 0 6px 6px 0; cursor: pointer;
       transition: all 0.15s ease;
     }
+    .margin-comment.normal-comment {
+      position: relative;
+      left: auto;
+      right: auto;
+      margin-bottom: 8px;
+      border-radius: 6px;
+    }
     .margin-comment-quote {
       font-size: 11px; color: #94a3b8; margin-bottom: 3px;
       font-weight: 500; display: flex; justify-content: space-between;
       align-items: center; font-style: italic;
     }
+    .margin-comment-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+      font-style: normal;
+    }
+    .margin-comment-edit {
+      background: none; border: none;
+      color: #64748b; font-size: 11px; font-weight: 700;
+      cursor: pointer; padding: 0;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .margin-comment-edit:hover { color: #334155; }
     .margin-comment-text {
       font-size: 13px; color: #334155; line-height: 1.45;
     }
     .margin-comment-delete {
       background: none; border: none; color: #cbd5e1;
       cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;
+    }
+    .margin-comment-editor {
+      margin-top: 6px;
+    }
+    .margin-comment-editor-input {
+      width: 100%;
+      min-height: 56px;
+      padding: 8px;
+      font-size: 13px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      resize: vertical;
+      outline: none;
+      line-height: 1.5;
+      color: #334155;
+      background: #fff;
+    }
+    .margin-comment-editor-input:focus { border-color: #6366f1; }
+    .margin-comment-editor-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .margin-comment-editor-cancel,
+    .margin-comment-editor-save {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 4px 8px;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .margin-comment-editor-cancel {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+    .margin-comment-editor-save {
+      background: #6366f1;
+      color: #fff;
+    }
+    .margin-comment-editor-save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     /* Loading overlay */
@@ -338,13 +563,6 @@
       font-family: 'DM Sans', sans-serif;
     }
 
-    /* Revision controls row */
-    .revision-bar {
-      display: flex; align-items: center; gap: 6px;
-      margin-bottom: 8px;
-    }
-    .revision-bar .spacer { flex: 1; }
-
     /* Global instructions bar */
     .global-bar {
       margin-bottom: 12px;
@@ -387,6 +605,21 @@
     .doc-column {
       flex: 1; min-width: 0;
       display: flex; flex-direction: column;
+    }
+
+    @media (max-width: 1180px) {
+      .layout { max-width: 100%; padding: 0 12px; }
+      .control-column { flex: 0 0 170px; min-width: 170px; }
+      .layout.has-outline .control-column { flex: 0 0 300px; min-width: 300px; }
+      .sidebar { flex: 0 0 180px; min-width: 180px; }
+      .document { padding: 36px 28px 64px; }
+    }
+
+    /* Safari can show 1px seams in multiline native selection with fractional line-height */
+    .is-safari .paragraph,
+    .is-safari .paragraph-normal,
+    .is-safari .paragraph-editing {
+      line-height: 32px;
     }
 
     /* Save status indicator */
@@ -533,6 +766,116 @@
       margin: 6px 0 2px; line-height: 1.4;
       font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
     }
+    .latex-subsubsection {
+      display: block;
+      font-size: 16px; font-weight: 600; color: #475569;
+      margin: 4px 0 2px; line-height: 1.4;
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+    .latex-cover-title {
+      display: block;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 54px;
+      line-height: 1.1;
+      font-weight: 500;
+      letter-spacing: 0;
+      color: #111827;
+      text-align: center;
+      margin: 16px auto 24px;
+      max-width: 900px;
+    }
+    .latex-cover-author {
+      display: block;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 24px;
+      line-height: 1.35;
+      font-weight: 500;
+      color: #111827;
+      text-align: center;
+      margin: 0 auto 20px;
+      max-width: 900px;
+    }
+    .latex-cover-date {
+      display: block;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.4;
+      font-weight: 500;
+      color: #111827;
+      text-transform: none;
+      letter-spacing: 0;
+      text-align: center;
+      margin: 0 auto 58px;
+      max-width: 900px;
+    }
+    .latex-cover-abstract {
+      display: block;
+      max-width: 900px;
+      margin: 0 auto 0;
+      padding: 0;
+      background: none;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .latex-cover-abstract-label {
+      display: block;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 700;
+      color: #111827;
+      text-transform: none;
+      letter-spacing: 0;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .latex-cover-abstract-text {
+      display: block;
+      white-space: pre-wrap;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 19px;
+      line-height: 1.45;
+      color: #111827;
+      text-align: justify;
+    }
+    .latex-cover-ack-heading {
+      display: block;
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 700;
+      color: #1e293b;
+      text-align: center;
+      margin: 26px 0 10px;
+    }
+    .latex-cover-author-sep {
+      display: inline-block;
+      width: 44px;
+    }
+    .latex-cover-note-marker {
+      font-size: 0.85em;
+      line-height: 0;
+      vertical-align: super;
+      color: #111827;
+      font-weight: 500;
+      margin-left: 1px;
+    }
+    .latex-cover-notes {
+      display: block;
+      max-width: 900px;
+      margin: 80px auto 18px;
+      padding: 8px 0 0;
+      border-top: 1px solid #64748b;
+    }
+    .latex-cover-note-item {
+      display: block;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 16px;
+      line-height: 1.35;
+      color: #111827;
+      margin-top: 4px;
+    }
 
     /* LaTeX error */
     .latex-error {
@@ -544,7 +887,49 @@
     .latex-markup {
       font-size: 12px; font-family: 'SFMono-Regular', 'Consolas', monospace;
       background: #eef0f4; color: #64748b; padding: 1px 5px;
-      border-radius: 4px; white-space: nowrap;
+      border-radius: 4px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .latex-citation {
+      color: #334155;
+      background: rgba(148, 163, 184, 0.16);
+      border-radius: 4px;
+      padding: 0 4px;
+      font-size: 1em;
+      line-height: inherit;
+      font-family: inherit;
+      vertical-align: baseline;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .latex-inline-math .katex {
+      font-size: 1em;
+      line-height: 1;
+      vertical-align: baseline;
+    }
+    .latex-footnote-inline {
+      display: inline;
+      white-space: normal;
+    }
+    .latex-footnote-marker {
+      font-size: 0.72em;
+      font-weight: 600;
+      color: #475569;
+      line-height: 0;
+      vertical-align: super;
+      margin-right: 2px;
+    }
+    .latex-footnote-text {
+      font-size: 0.78em;
+      color: #475569;
+      background: rgba(148, 163, 184, 0.14);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 4px;
+      padding: 0 4px;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     /* Click-to-edit paragraph in Normal mode */
@@ -601,7 +986,7 @@ let state = {
   colorCounter: 0,
   showBanner: true,
   globalInstruction: "",
-  attachments: [],    // { name, base64 }
+  attachments: [],    // { name, kind: "pdf", base64, mimeType } | { name, kind: "text", text, mimeType }
   loading: false,
   toast: null,
   docId: null,
@@ -610,7 +995,14 @@ let state = {
   docList: null,      // cached document list for home view
   viewMode: "source", // "source" | "normal" — not persisted
   revisionScope: "focused", // "focused" | "section" | "subsection" | "full" — not persisted
+  revisionAttachments: "with", // "with" | "none" — persisted per document
+  pendingEditCursorOffset: null, // cursor offset to apply when entering paragraph edit mode
+  pendingEditEnsureVisible: false, // scroll caret into view after a mapped click target
   editingPara: null, // paragraph index being click-to-edited in Normal mode
+  normalCoverRange: null, // { start, end } for grouped cover-page source in Normal mode
+  activeOutlinePara: null, // highlighted outline destination paragraph
+  editingCommentId: null,
+  editingCommentText: "",
 };
 
 const COLORS = [
@@ -622,6 +1014,8 @@ const COLORS = [
 ];
 
 let changeIdCounter = 0;
+const IS_SAFARI = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(navigator.userAgent);
+if (IS_SAFARI) document.documentElement.classList.add("is-safari");
 
 // ── Helpers ────────────────────────────────────────────
 function getPlainText(segments) {
@@ -700,6 +1094,395 @@ function getLatexScopeInfo(plainParas) {
   };
 }
 
+function normalizeOutlineTitle(rawTitle, commandName) {
+  let text = rawTitle || "";
+  text = text.replace(/\\label\{[^}]*\}/g, "");
+  text = text.replace(/\\[a-zA-Z@]+\*?(?:\[[^\]]*\])?/g, "");
+  text = text.replace(/[{}]/g, "");
+  text = text.replace(/``/g, "\u201c").replace(/''/g, "\u201d");
+  text = text.replace(/~/g, " ");
+  text = text.replace(/\s+/g, " ").trim();
+  if (!text) {
+    const pretty = commandName.charAt(0).toUpperCase() + commandName.slice(1);
+    return pretty;
+  }
+  return text;
+}
+
+function getLatexOutlineItems(plainParas) {
+  if (!Array.isArray(plainParas) || plainParas.length === 0) return [];
+  const items = [];
+  const levelByCmd = { part: 0, chapter: 0, section: 1, subsection: 2, subsubsection: 3 };
+
+  plainParas.forEach((paraText, paraIndex) => {
+    const text = stripLatexComments(paraText || "");
+    if (!text.trim()) return;
+
+    const pattern = /\\(part|chapter|section|subsection|subsubsection)\*?/g;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const commandName = (match[1] || "").toLowerCase();
+      let argStart = match.index + match[0].length;
+      while (argStart < text.length && /\s/.test(text[argStart])) argStart++;
+      if (text[argStart] !== "{") continue;
+      const arg = readBalancedGroup(text, argStart);
+      if (!arg) continue;
+      items.push({
+        paraIndex,
+        level: levelByCmd[commandName] ?? 1,
+        title: normalizeOutlineTitle(arg.content, commandName),
+      });
+      pattern.lastIndex = arg.end;
+    }
+  });
+
+  return items;
+}
+
+function getCoverPageSourceRange(plainParas) {
+  if (!Array.isArray(plainParas) || plainParas.length === 0) return null;
+  const anchorToken = /\\(?:title|author|date|maketitle|thanks|ifsubmit|thispagestyle|singlespacing|setcounter|pagenumbering|begin\{abstract\}|end\{abstract\})\b|\\newcommand\s*\{\\(?:tit|ack)\}/i;
+  const coverCmdToken = /\\(?:title|author|date|ifsubmit|newcommand|thanks|setcounter|pagenumbering)\b/i;
+
+  function braceDelta(text) {
+    let delta = 0;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === "\\" && i + 1 < text.length) {
+        i++;
+        continue;
+      }
+      if (ch === "{") delta++;
+      else if (ch === "}") delta--;
+    }
+    return delta;
+  }
+
+  let start = -1;
+  let end = -1;
+  let inAbstract = false;
+  let coverCommandDepth = 0;
+
+  for (let idx = 0; idx < plainParas.length; idx++) {
+    const line = plainParas[idx] || "";
+    const trimmed = line.trim();
+    const hasAnchor = anchorToken.test(line);
+    const hasBeginAbstract = /\\begin\{abstract\}/.test(line);
+    const hasEndAbstract = /\\end\{abstract\}/.test(line);
+    const isCommentOnly = trimmed.startsWith("%");
+
+    if (start === -1) {
+      if (!hasAnchor) continue;
+      start = idx;
+    }
+
+    if (hasBeginAbstract) inAbstract = true;
+
+    const shouldTrackCoverDepth = coverCommandDepth > 0 || coverCmdToken.test(line);
+    if (shouldTrackCoverDepth) {
+      coverCommandDepth = Math.max(0, coverCommandDepth + braceDelta(line));
+    }
+
+    const isCoverContinuation = inAbstract || coverCommandDepth > 0 || hasAnchor || isCommentOnly;
+    if (isCoverContinuation) {
+      end = idx;
+    } else {
+      break;
+    }
+
+    if (hasEndAbstract) inAbstract = false;
+  }
+
+  if (start === -1 || end < start) return null;
+  return { start, end };
+}
+
+function getCombinedSourceText(start, end) {
+  if (start == null || end == null || start < 0 || end < start) return "";
+  const lines = [];
+  for (let i = start; i <= end; i++) {
+    const para = state.paragraphs[i];
+    lines.push(para ? getPlainText(para.segments) : "");
+  }
+  return lines.join("\n");
+}
+
+function getActiveNormalEditingRange() {
+  if (state.viewMode !== "normal" || state.editingPara === null) return null;
+  const cover = state.normalCoverRange;
+  if (cover && state.editingPara === cover.start) return { start: cover.start, end: cover.end };
+  return { start: state.editingPara, end: state.editingPara };
+}
+
+function findCommandArgRange(text, command, allowStar) {
+  if (!text || !command) return null;
+  let cursor = 0;
+  while (cursor < text.length) {
+    const idx = text.indexOf(command, cursor);
+    if (idx === -1) return null;
+    let j = idx + command.length;
+    if (/[A-Za-z@]/.test(text[j] || "")) {
+      cursor = j;
+      continue;
+    }
+    if (allowStar && text[j] === "*") j++;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg = readBalancedGroup(text, j);
+    if (!arg) {
+      cursor = j + 1;
+      continue;
+    }
+    return { start: j + 1, end: arg.end - 1 };
+  }
+  return null;
+}
+
+function findAllCommandArgRanges(text, command, allowStar) {
+  if (!text || !command) return [];
+  const ranges = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    const idx = text.indexOf(command, cursor);
+    if (idx === -1) break;
+    let j = idx + command.length;
+    if (/[A-Za-z@]/.test(text[j] || "")) {
+      cursor = j;
+      continue;
+    }
+    if (allowStar && text[j] === "*") j++;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg = readBalancedGroup(text, j);
+    if (!arg) {
+      cursor = j + 1;
+      continue;
+    }
+    ranges.push({ start: j + 1, end: arg.end - 1 });
+    cursor = arg.end;
+  }
+  return ranges;
+}
+
+function findNewcommandBodyRange(text, macroName) {
+  if (!text || !macroName) return null;
+  let cursor = 0;
+  const token = "\\newcommand";
+  while (cursor < text.length) {
+    const idx = text.indexOf(token, cursor);
+    if (idx === -1) return null;
+    let j = idx + token.length;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const name = readBalancedGroup(text, j);
+    if (!name) {
+      cursor = j + 1;
+      continue;
+    }
+    j = name.end;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    if (text[j] === "[") {
+      const close = text.indexOf("]", j + 1);
+      if (close !== -1) {
+        j = close + 1;
+        while (j < text.length && /\s/.test(text[j])) j++;
+      }
+    }
+    const body = readBalancedGroup(text, j);
+    if (!body) {
+      cursor = j + 1;
+      continue;
+    }
+    if ((name.content || "").trim() === macroName) {
+      return { start: j + 1, end: body.end - 1 };
+    }
+    cursor = body.end;
+  }
+  return null;
+}
+
+function findEnvironmentBodyRange(text, envName) {
+  if (!text || !envName) return null;
+  const begin = `\\begin{${envName}}`;
+  const end = `\\end{${envName}}`;
+  const beginIdx = text.indexOf(begin);
+  if (beginIdx === -1) return null;
+  const bodyStart = beginIdx + begin.length;
+  const endIdx = text.indexOf(end, bodyStart);
+  if (endIdx === -1) return null;
+  return { start: bodyStart, end: endIdx };
+}
+
+function findAcknowledgementSectionRange(text) {
+  if (!text) return null;
+  const m = /\\(?:section|subsection|subsubsection)\*?\{(?:Acknowledg(?:e)?ments?|Acknowlegements?)\}/i.exec(text);
+  if (!m) return null;
+  return { start: m.index, end: m.index + m[0].length };
+}
+
+function getCoverSourceRanges(combinedSource) {
+  const titleArg = findCommandArgRange(combinedSource, "\\title", true);
+  const titleMacroBody = findNewcommandBodyRange(combinedSource, "\\tit");
+  const titleBodyText = titleArg ? combinedSource.slice(titleArg.start, titleArg.end) : "";
+  const thanksRanges = findAllCommandArgRanges(combinedSource, "\\thanks", false);
+  const ackMacroBody = findNewcommandBodyRange(combinedSource, "\\ack");
+  const firstThanksBody = thanksRanges[0] ? combinedSource.slice(thanksRanges[0].start, thanksRanges[0].end).trim() : "";
+  const firstThanksUsesAck = /^\\ack(?![A-Za-z@])/.test(firstThanksBody);
+  const titleRange = titleArg && titleMacroBody && /\\tit(?![A-Za-z@])/.test(titleBodyText)
+    ? titleMacroBody
+    : titleArg;
+
+  return {
+    title: titleRange,
+    titleArg,
+    titleMacroBody,
+    author: findCommandArgRange(combinedSource, "\\author", true),
+    date: findCommandArgRange(combinedSource, "\\date", true),
+    abstract: findEnvironmentBodyRange(combinedSource, "abstract"),
+    thanks: thanksRanges,
+    firstThanksUsesAck,
+    ackMacroBody,
+    ack: ackMacroBody
+      || findAcknowledgementSectionRange(combinedSource)
+      || thanksRanges[0]
+      || findCommandArgRange(combinedSource, "\\thanks", false),
+  };
+}
+
+function getTextOffsetFromPointWithinElement(el, clientX, clientY) {
+  if (!el) return null;
+  let range = null;
+  if (document.caretRangeFromPoint) {
+    range = document.caretRangeFromPoint(clientX, clientY);
+  } else if (document.caretPositionFromPoint) {
+    const pos = document.caretPositionFromPoint(clientX, clientY);
+    if (pos && pos.offsetNode) {
+      range = document.createRange();
+      range.setStart(pos.offsetNode, pos.offset);
+      range.collapse(true);
+    }
+  }
+  if (!range || !el.contains(range.startContainer)) return null;
+  const pre = document.createRange();
+  pre.selectNodeContents(el);
+  pre.setEnd(range.startContainer, range.startOffset);
+  return pre.toString().length;
+}
+
+function extractTokenNearOffset(text, offset) {
+  if (!text) return "";
+  const isWordChar = ch => /[A-Za-z0-9@._:-]/.test(ch);
+  let i = Math.max(0, Math.min(text.length - 1, offset));
+  if (!isWordChar(text[i]) && i > 0 && isWordChar(text[i - 1])) i--;
+  let s = i;
+  let e = i;
+  while (s > 0 && isWordChar(text[s - 1])) s--;
+  while (e < text.length && isWordChar(text[e])) e++;
+  const token = text.slice(s, e).trim();
+  if (token.length >= 3) return token;
+  const fallback = text.slice(Math.max(0, offset - 12), Math.min(text.length, offset + 12)).replace(/\s+/g, " ").trim();
+  return fallback.length >= 3 ? fallback : "";
+}
+
+function parseCoverNoteNumber(markerText) {
+  const marker = (markerText || "").trim();
+  if (!marker) return null;
+  const symbols = ["*", "\u2020", "\u2021", "\u00a7"];
+  const idx = symbols.indexOf(marker);
+  if (idx !== -1) return idx + 1;
+  const m = /^\*(\d+)$/.exec(marker);
+  if (m) return symbols.length + parseInt(m[1], 10);
+  return null;
+}
+
+function getCoverNoteNumberFromElement(el) {
+  if (!el) return null;
+  const markerEl = el.classList && el.classList.contains("latex-cover-note-marker")
+    ? el
+    : (el.querySelector ? el.querySelector(".latex-cover-note-marker") : null);
+  const markerText = markerEl ? markerEl.textContent : "";
+  return parseCoverNoteNumber(markerText);
+}
+
+function mapDisplayOffsetToSourceOffset(displayText, sourceText, displayOffset) {
+  if (!sourceText) return 0;
+  const safeDisplay = displayText || "";
+  const clampedOffset = Math.max(0, Math.min(safeDisplay.length, displayOffset || 0));
+  const ratioGuess = Math.round((clampedOffset / Math.max(1, safeDisplay.length)) * sourceText.length);
+  const token = extractTokenNearOffset(safeDisplay, clampedOffset);
+  if (!token) return Math.max(0, Math.min(sourceText.length, ratioGuess));
+
+  const needle = token.toLowerCase();
+  const hay = sourceText.toLowerCase();
+  let best = -1;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let idx = hay.indexOf(needle); idx !== -1; idx = hay.indexOf(needle, idx + 1)) {
+    const dist = Math.abs(idx - ratioGuess);
+    if (dist < bestDist) {
+      best = idx;
+      bestDist = dist;
+    }
+  }
+  if (best === -1) return Math.max(0, Math.min(sourceText.length, ratioGuess));
+  return best;
+}
+
+function getCoverSourceRangeForElement(el, ranges) {
+  if (!el || !ranges) return null;
+  const isAuthorMarker = !!(el.closest && el.closest(".latex-cover-author"));
+  if (
+    (el.classList && el.classList.contains("latex-cover-note-marker")) ||
+    el.closest(".latex-cover-note-item, .latex-cover-notes")
+  ) {
+    const noteNumber = getCoverNoteNumberFromElement(el);
+    if (noteNumber === 1 && ranges.firstThanksUsesAck && ranges.ackMacroBody) return ranges.ackMacroBody;
+    if (noteNumber && Array.isArray(ranges.thanks) && ranges.thanks[noteNumber - 1]) {
+      return ranges.thanks[noteNumber - 1];
+    }
+    if (isAuthorMarker && ranges.author) return ranges.author;
+    return ranges.ack;
+  }
+  if (el.closest(".latex-cover-abstract, .latex-cover-abstract-label, .latex-cover-abstract-text")) return ranges.abstract;
+  if (el.closest(".latex-cover-author")) return ranges.author;
+  if (el.closest(".latex-cover-date")) return ranges.date;
+  if (el.closest(".latex-cover-title")) return ranges.title;
+  if (el.closest(".latex-cover-ack-heading")) return ranges.ack;
+  return null;
+}
+
+function getCoverCursorOffsetFromClick(evt, coverRange) {
+  if (!coverRange) return 0;
+  const combined = getCombinedSourceText(coverRange.start, coverRange.end);
+  if (!combined) return 0;
+  const coverTarget = evt && evt.target && evt.target.closest
+    ? evt.target.closest(".latex-cover-title, .latex-cover-author, .latex-cover-date, .latex-cover-abstract, .latex-cover-abstract-label, .latex-cover-abstract-text, .latex-cover-ack-heading, .latex-cover-notes, .latex-cover-note-item, .latex-cover-note-marker")
+    : null;
+  if (!coverTarget) return 0;
+
+  const ranges = getCoverSourceRanges(combined);
+  const sourceRange = getCoverSourceRangeForElement(coverTarget, ranges) || { start: 0, end: combined.length };
+  const sourceSlice = combined.slice(sourceRange.start, sourceRange.end);
+  const clickOffset = getTextOffsetFromPointWithinElement(coverTarget, evt.clientX, evt.clientY);
+  if (clickOffset == null) return sourceRange.start;
+
+  const displayText = coverTarget.innerText || coverTarget.textContent || "";
+  const localOffset = mapDisplayOffsetToSourceOffset(displayText, sourceSlice, clickOffset);
+  return sourceRange.start + localOffset;
+}
+
+function getParagraphCursorOffsetFromClick(evt, pi) {
+  if (!evt || typeof pi !== "number") return null;
+  const para = state.paragraphs[pi];
+  if (!para) return null;
+  const paraNodeFromTarget = evt.target && evt.target.closest
+    ? evt.target.closest(`.paragraph[data-para="${pi}"]`)
+    : null;
+  const paraNode = paraNodeFromTarget || document.querySelector(`.paragraph[data-para="${pi}"]`);
+  if (!paraNode) return null;
+  const clickOffset = getTextOffsetFromPointWithinElement(paraNode, evt.clientX, evt.clientY);
+  if (clickOffset == null) return null;
+  const displayText = paraNode.innerText || paraNode.textContent || "";
+  const sourceText = getPlainText(para.segments);
+  return mapDisplayOffsetToSourceOffset(displayText, sourceText, clickOffset);
+}
+
 function normalizeRevisionScope(scope, scopeInfo) {
   if (scope === "section" && (!scopeInfo.isLatexDoc || scopeInfo.sectionBlocks.length === 0)) return "focused";
   if (scope === "subsection" && (!scopeInfo.isLatexDoc || scopeInfo.subsectionBlocks.length === 0)) return "focused";
@@ -729,21 +1512,262 @@ function showToast(msg, isError) {
   setTimeout(() => { state.toast = null; render(); }, 3000);
 }
 
+function scrollToDocumentTop() {
+  const docEl = document.querySelector(".document");
+  if (!docEl) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  const header = document.querySelector(".header");
+  const headerHeight = header ? header.getBoundingClientRect().height : 0;
+  const targetY = window.scrollY + docEl.getBoundingClientRect().top - headerHeight - 12;
+  window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+}
+
+function scrollToParagraph(paraIndex) {
+  state.activeOutlinePara = paraIndex;
+  const node = document.querySelector(`.paragraph[data-para="${paraIndex}"]`);
+  if (!node) return;
+  const header = document.querySelector(".header");
+  const headerHeight = header ? header.getBoundingClientRect().height : 0;
+  const targetY = window.scrollY + node.getBoundingClientRect().top - headerHeight - 14;
+  window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+}
+
+function getParagraphNodeForAnchor(docEl, paraIndex) {
+  const exact = docEl.querySelector(`.paragraph[data-para="${paraIndex}"]`);
+  if (exact) return exact;
+  const nodes = Array.from(docEl.querySelectorAll(".paragraph[data-para]"));
+  if (nodes.length === 0) return null;
+  let closest = nodes[0];
+  let bestDist = Math.abs(parseInt(closest.dataset.para, 10) - paraIndex);
+  for (const node of nodes) {
+    const idx = parseInt(node.dataset.para, 10);
+    const dist = Math.abs(idx - paraIndex);
+    if (dist < bestDist) {
+      closest = node;
+      bestDist = dist;
+    }
+  }
+  return closest;
+}
+
+function captureComposerScrollAnchor() {
+  const docEl = document.querySelector(".document");
+  if (!docEl) return null;
+  const nodes = Array.from(docEl.querySelectorAll(".paragraph[data-para]"));
+  if (nodes.length === 0) return null;
+
+  const header = document.querySelector(".header");
+  const anchorY = (header ? header.getBoundingClientRect().bottom : 0) + 12;
+  let target = null;
+  for (const node of nodes) {
+    const rect = node.getBoundingClientRect();
+    if (rect.top <= anchorY && rect.bottom >= anchorY) {
+      target = node;
+      break;
+    }
+    if (rect.top > anchorY) {
+      target = node;
+      break;
+    }
+  }
+  if (!target) target = nodes[nodes.length - 1];
+  if (!target) return null;
+
+  const rect = target.getBoundingClientRect();
+  return {
+    paraIndex: parseInt(target.dataset.para, 10),
+    offsetInPara: Math.max(0, anchorY - rect.top),
+    anchorY,
+  };
+}
+
+function restoreComposerScrollAnchor(anchor) {
+  if (!anchor) return;
+  const docEl = document.querySelector(".document");
+  if (!docEl) return;
+  const target = getParagraphNodeForAnchor(docEl, anchor.paraIndex);
+  if (!target) return;
+
+  const rect = target.getBoundingClientRect();
+  const desiredTop = anchor.anchorY - anchor.offsetInPara;
+  const delta = rect.top - desiredTop;
+  if (Math.abs(delta) < 0.5) return;
+  window.scrollTo({ top: Math.max(0, window.scrollY + delta), behavior: "auto" });
+}
+
+function ensureActiveCaretVisible() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(true);
+  let rect = range.getClientRects()[0] || range.getBoundingClientRect();
+  if (!rect || (rect.width === 0 && rect.height === 0)) {
+    const paraNode = getSelectionParaNode(sel);
+    if (!paraNode) return;
+    rect = paraNode.getBoundingClientRect();
+  }
+  const header = document.querySelector(".header");
+  const topLimit = (header ? header.getBoundingClientRect().bottom : 0) + 10;
+  const bottomLimit = window.innerHeight - 20;
+  let nextY = null;
+  if (rect.top < topLimit) {
+    nextY = window.scrollY + (rect.top - topLimit) - 8;
+  } else if (rect.bottom > bottomLimit) {
+    nextY = window.scrollY + (rect.bottom - bottomLimit) + 8;
+  }
+  if (nextY !== null) {
+    window.scrollTo({ top: Math.max(0, nextY), behavior: "auto" });
+  }
+}
+
+function setViewMode(mode) {
+  if (mode !== "source" && mode !== "normal") return;
+  if (state.viewMode === mode) return;
+
+  const scrollAnchor = captureComposerScrollAnchor();
+  state.viewMode = mode;
+  state.editingPara = null;
+  state.pendingEditCursorOffset = null;
+  state.pendingEditEnsureVisible = false;
+  state.activeOutlinePara = null;
+  latexCache.clear();
+  render();
+
+  if (scrollAnchor) {
+    requestAnimationFrame(() => {
+      restoreComposerScrollAnchor(scrollAnchor);
+      requestAnimationFrame(() => restoreComposerScrollAnchor(scrollAnchor));
+    });
+  }
+}
+
+function updateHeaderJumpVisibility() {
+  const header = document.querySelector(".header");
+  if (!header) return;
+  const docEl = document.querySelector(".document");
+  const hasDocument = !!docEl;
+  const revealThreshold = 0;
+  const shouldShow = hasDocument && window.scrollY > revealThreshold;
+  header.classList.toggle("show-jump-top", shouldShow);
+}
+
+function clearSafariSelectionHighlight() {
+  if (!IS_SAFARI) return;
+  if (CSS.highlights) CSS.highlights.delete("safari-selection");
+  const overlay = document.getElementById("safari-selection-overlay");
+  if (overlay) overlay.innerHTML = "";
+}
+
+function updateSafariSelectionHighlight() {
+  if (!IS_SAFARI) return;
+  const overlay = document.getElementById("safari-selection-overlay");
+  if (!overlay) return;
+  overlay.innerHTML = "";
+
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || sel.isCollapsed) {
+    return;
+  }
+
+  const range = sel.getRangeAt(0);
+  const docEl = overlay.closest(".document");
+  if (!docEl) {
+    return;
+  }
+
+  const common = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+    ? range.commonAncestorContainer.parentElement
+    : range.commonAncestorContainer;
+  if (!common || !docEl.contains(common)) {
+    return;
+  }
+
+  const active = document.activeElement;
+  if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) {
+    return;
+  }
+
+  const docRect = docEl.getBoundingClientRect();
+  const maxWidth = Math.ceil(docRect.width);
+  const maxHeight = Math.ceil(docRect.height);
+  const rects = Array.from(range.getClientRects()).filter(r => r.width > 0 && r.height > 0);
+  rects.forEach(rect => {
+    const left = Math.floor(rect.left - docRect.left);
+    const top = Math.floor(rect.top - docRect.top) - 1;
+    const width = Math.ceil(rect.width);
+    const height = Math.ceil(rect.height) + 2;
+    if (left >= maxWidth || top >= maxHeight || left + width <= 0 || top + height <= 0) return;
+
+    const box = document.createElement("div");
+    box.className = "safari-selection-rect";
+    box.style.left = `${Math.max(0, left)}px`;
+    box.style.top = `${Math.max(0, top)}px`;
+    box.style.width = `${Math.min(maxWidth - Math.max(0, left), width)}px`;
+    box.style.height = `${Math.min(maxHeight - Math.max(0, top), height)}px`;
+    overlay.appendChild(box);
+  });
+}
+
+function hasFileExtension(fileName, exts) {
+  const lower = (fileName || "").toLowerCase();
+  return exts.some(ext => lower.endsWith(ext));
+}
+
+function isPdfFile(file) {
+  return file.type === "application/pdf" || hasFileExtension(file.name, [".pdf"]);
+}
+
+function isTextFile(file) {
+  const textExts = [".txt", ".text", ".md", ".markdown", ".tex", ".latex"];
+  return (file.type && file.type.startsWith("text/")) || hasFileExtension(file.name, textExts);
+}
+
 function attachFile() {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".pdf";
+  input.accept = ".pdf,.txt,.text,.md,.markdown,.tex,.latex,text/*,application/pdf";
   input.multiple = true;
   input.onchange = (e) => {
     Array.from(e.target.files).forEach(file => {
+      if (!isPdfFile(file) && !isTextFile(file)) {
+        showToast("Only PDF and text files are supported", true);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(",")[1];
-        state.attachments.push({ name: file.name, base64 });
+        if (isPdfFile(file)) {
+          const dataUrl = typeof reader.result === "string" ? reader.result : "";
+          const commaIdx = dataUrl.indexOf(",");
+          const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : "";
+          if (!base64) {
+            showToast(`Could not read file: ${file.name}`, true);
+            return;
+          }
+          state.attachments.push({
+            name: file.name,
+            kind: "pdf",
+            mimeType: file.type || "application/pdf",
+            base64,
+          });
+        } else {
+          const text = typeof reader.result === "string" ? reader.result : "";
+          state.attachments.push({
+            name: file.name,
+            kind: "text",
+            mimeType: file.type || "text/plain",
+            text,
+          });
+        }
         scheduleSave();
         render();
       };
-      reader.readAsDataURL(file);
+      if (isPdfFile(file)) {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsText(file);
+      }
     });
   };
   input.click();
@@ -763,6 +1787,7 @@ function getSaveableState() {
     globalInstruction: state.globalInstruction,
     attachments: state.attachments,
     model: state.model,
+    revisionAttachments: state.revisionAttachments,
     colorCounter: state.colorCounter,
   };
 }
@@ -837,11 +1862,13 @@ async function openDocument(id) {
     state.globalInstruction = c.globalInstruction || "";
     state.attachments = c.attachments || [];
     state.model = c.model || "claude-sonnet-4-5-20250929";
+    state.revisionAttachments = c.revisionAttachments || "with";
     state.colorCounter = c.colorCounter || 0;
     state.docId = doc.id;
     state.docTitle = doc.title;
     state.activeCommentId = null;
     state.pendingSelection = null;
+    state.pendingEditCursorOffset = null;
     state.saveStatus = "saved";
     state.showBanner = false;
     state.docList = null;
@@ -978,11 +2005,13 @@ async function newDocument() {
   state.comments = [];
   state.activeCommentId = null;
   state.pendingSelection = null;
+  state.pendingEditCursorOffset = null;
   state.docId = null;
   state.docTitle = "Untitled";
   state.saveStatus = null;
   state.globalInstruction = "";
   state.attachments = [];
+  state.revisionAttachments = "with";
   hideSelectionToolbar();
   state.showBanner = true;
   updateUrl(null);
@@ -1080,9 +2109,64 @@ function addComment(comment) {
 
 function deleteComment(id) {
   state.comments = state.comments.filter(c => c.id !== id);
+  if (state.editingCommentId === id) {
+    state.editingCommentId = null;
+    state.editingCommentText = "";
+  }
   state.activeCommentId = null;
   scheduleSave();
   render();
+}
+
+function beginEditComment(id) {
+  const c = state.comments.find(item => item.id === id);
+  if (!c) return;
+  state.activeCommentId = id;
+  state.editingCommentId = id;
+  state.editingCommentText = c.comment || "";
+  render();
+  requestAnimationFrame(() => {
+    const input = document.getElementById(`comment-edit-${id}`);
+    if (!input) return;
+    input.focus();
+    const end = input.value.length;
+    try {
+      input.setSelectionRange(end, end);
+    } catch {}
+  });
+}
+
+function cancelEditComment() {
+  state.editingCommentId = null;
+  state.editingCommentText = "";
+  render();
+}
+
+function saveEditedComment(id) {
+  const c = state.comments.find(item => item.id === id);
+  if (!c) return;
+  const nextText = (state.editingCommentText || "").trim();
+  if (!nextText) {
+    showToast("Comment cannot be empty", true);
+    return;
+  }
+  c.comment = nextText;
+  state.editingCommentId = null;
+  state.editingCommentText = "";
+  scheduleSave();
+  render();
+}
+
+function handleEditCommentKeydown(e, id) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    saveEditedComment(id);
+    return;
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    cancelEditComment();
+  }
 }
 
 async function requestRevision() {
@@ -1107,6 +2191,8 @@ async function requestRevision() {
     const body = {
       comments: state.comments.map(c => ({
         paraIndex: c.paraIndex,
+        start: c.start,
+        end: c.end,
         selectedText: c.selectedText,
         comment: c.comment,
       })),
@@ -1139,7 +2225,9 @@ async function requestRevision() {
     }
 
     if (hasGlobal) body.globalInstruction = state.globalInstruction.trim();
-    if (state.attachments.length > 0) body.attachments = state.attachments;
+    if (state.revisionAttachments === "with" && state.attachments.length > 0) {
+      body.attachments = state.attachments;
+    }
 
     const res = await fetch("/api/revise", {
       method: "POST",
@@ -1200,7 +2288,31 @@ async function requestRevision() {
         para.segments = newSegments;
         appliedCount++;
       } else {
-        console.warn("Revision skipped: oldText not found in paragraph", change.paraIndex, JSON.stringify(change.oldText));
+        // Fallback: match against the paragraph's full visible text so revisions can
+        // still apply when oldText falls inside existing change segments.
+        const visibleText = para.segments
+          .map(seg => seg.type === "text" ? seg.content : (seg.newContent || seg.oldContent || ""))
+          .join("");
+        const idx = visibleText.indexOf(change.oldText);
+        if (idx !== -1) {
+          const rebuilt = [];
+          if (idx > 0) rebuilt.push({ type: "text", content: visibleText.slice(0, idx) });
+          rebuilt.push({
+            type: "change",
+            id: "ch" + (++changeIdCounter),
+            oldContent: change.oldText,
+            newContent: change.newText,
+            status: "pending",
+          });
+          const afterIdx = idx + change.oldText.length;
+          if (afterIdx < visibleText.length) {
+            rebuilt.push({ type: "text", content: visibleText.slice(afterIdx) });
+          }
+          para.segments = rebuilt;
+          appliedCount++;
+        } else {
+          console.warn("Revision skipped: oldText not found in paragraph", change.paraIndex, JSON.stringify(change.oldText));
+        }
       }
     }
 
@@ -1245,18 +2357,40 @@ function handleInput(e) {
   const pi = parseInt(node.dataset.para);
   // In normal mode, only handle input for the editing paragraph
   if (state.viewMode === "normal" && pi !== state.editingPara) return;
-  const para = state.paragraphs[pi];
-  if (!para) return;
+  const editingRange = getActiveNormalEditingRange();
+  const rangeStart = editingRange ? editingRange.start : pi;
+  const rangeEnd = editingRange ? editingRange.end : pi;
+  if (!state.paragraphs[rangeStart]) return;
 
   const newText = node.innerText;
-  para.segments = [{ type: "text", content: newText }];
+  if (rangeEnd > rangeStart) {
+    const lines = newText.replace(/\r\n/g, "\n").split("\n");
+    const rangeLen = rangeEnd - rangeStart + 1;
+    for (let i = 0; i < rangeLen; i++) {
+      const para = state.paragraphs[rangeStart + i];
+      if (!para) continue;
+      let content = "";
+      if (lines.length <= rangeLen) {
+        content = lines[i] ?? "";
+      } else if (i < rangeLen - 1) {
+        content = lines[i] ?? "";
+      } else {
+        content = lines.slice(i).join("\n");
+      }
+      para.segments = [{ type: "text", content }];
+    }
+  } else {
+    const para = state.paragraphs[pi];
+    if (!para) return;
+    para.segments = [{ type: "text", content: newText }];
+  }
 
   scheduleSave();
 
-  // Remove comments on this paragraph (offsets are now invalid)
-  const hadComments = state.comments.some(c => c.paraIndex === pi);
+  // Remove comments on this edited range (offsets are now invalid)
+  const hadComments = state.comments.some(c => c.paraIndex >= rangeStart && c.paraIndex <= rangeEnd);
   if (hadComments) {
-    state.comments = state.comments.filter(c => c.paraIndex !== pi);
+    state.comments = state.comments.filter(c => c.paraIndex < rangeStart || c.paraIndex > rangeEnd);
     if (state.activeCommentId && !state.comments.find(c => c.id === state.activeCommentId)) {
       state.activeCommentId = null;
     }
@@ -1367,6 +2501,18 @@ function handlePaste(e) {
   const paraNode = getSelectionParaNode(sel);
   if (!paraNode) return;
   const pi = parseInt(paraNode.dataset.para);
+  const editingRange = getActiveNormalEditingRange();
+  if (
+    state.viewMode === "normal" &&
+    editingRange &&
+    editingRange.end > editingRange.start &&
+    pi === editingRange.start
+  ) {
+    e.preventDefault();
+    if (!insertPlainTextAtSelection(blocks.join("\n"))) return;
+    paraNode.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
   const para = state.paragraphs[pi];
   if (!para) return;
 
@@ -1467,8 +2613,14 @@ function handleCopy(e) {
 
 // ── Arrow key navigation + paragraph merging ───────────
 function handleKeyDown(e) {
+  const isArrowKey = e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown";
+  // Preserve native macOS keyboard navigation/selection combos.
+  if (isArrowKey && (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey)) return;
+
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return;
+  const hasCmdCtrlAlt = e.metaKey || e.ctrlKey || e.altKey;
+  const hasAnyModifier = hasCmdCtrlAlt || e.shiftKey;
 
   let paraNode = sel.anchorNode;
   while (paraNode && !(paraNode.dataset && paraNode.dataset.para !== undefined)) {
@@ -1480,16 +2632,27 @@ function handleKeyDown(e) {
 
   // In normal mode, only handle keys for the editing paragraph
   if (state.viewMode === "normal" && pi !== state.editingPara) return;
+  const editingRange = getActiveNormalEditingRange();
+  const isGroupedCoverEditing = !!editingRange && editingRange.end > editingRange.start && pi === editingRange.start;
+
+  // For grouped cover-page editing, keep editing behavior text-like in one block.
+  if (isGroupedCoverEditing) {
+    if (e.key === "Enter" && !hasCmdCtrlAlt) {
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+    }
+    return;
+  }
 
   // Shift+Enter → insert a line break within the paragraph
-  if (e.key === "Enter" && e.shiftKey) {
+  if (e.key === "Enter" && e.shiftKey && !hasCmdCtrlAlt) {
     e.preventDefault();
     document.execCommand("insertLineBreak");
     return;
   }
 
   // Enter → split paragraph at cursor
-  if (e.key === "Enter" && !e.shiftKey) {
+  if (e.key === "Enter" && !e.shiftKey && !hasCmdCtrlAlt) {
     e.preventDefault();
     const para = state.paragraphs[pi];
     if (!para) return;
@@ -1544,7 +2707,7 @@ function handleKeyDown(e) {
   }
 
   // Backspace at start of paragraph → merge with previous
-  if (e.key === "Backspace" && pi > 0) {
+  if (e.key === "Backspace" && !hasAnyModifier && pi > 0) {
     const range = sel.getRangeAt(0);
     if (range.collapsed && isCursorAtStart(paraNode)) {
       e.preventDefault();
@@ -1580,7 +2743,7 @@ function handleKeyDown(e) {
   }
 
   // Delete at end of paragraph → merge with next
-  if (e.key === "Delete" && pi < state.paragraphs.length - 1) {
+  if (e.key === "Delete" && !hasAnyModifier && pi < state.paragraphs.length - 1) {
     const range = sel.getRangeAt(0);
     if (range.collapsed && isCursorAtEnd(paraNode)) {
       e.preventDefault();
@@ -1613,6 +2776,7 @@ function handleKeyDown(e) {
 
   // Arrow navigation across paragraphs
   if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (hasAnyModifier) return;
 
   const startContainer = sel.getRangeAt(0).startContainer;
   const startOffset = sel.getRangeAt(0).startOffset;
@@ -1623,12 +2787,17 @@ function handleKeyDown(e) {
     const newRange = newSel.getRangeAt(0);
 
     if (newRange.startContainer === startContainer && newRange.startOffset === startOffset) {
-      const targetPi = e.key === "ArrowDown" ? pi + 1 : pi - 1;
+      let targetPi = e.key === "ArrowDown" ? pi + 1 : pi - 1;
+      const cover = state.normalCoverRange;
+      if (state.viewMode === "normal" && cover && targetPi >= cover.start && targetPi <= cover.end) {
+        targetPi = cover.start;
+      }
       if (targetPi < 0 || targetPi >= state.paragraphs.length) return;
 
       if (state.viewMode === "normal") {
         // Switch editing to the target paragraph
         state.editingPara = targetPi;
+        state.pendingEditCursorOffset = 0;
         render();
         // Position cursor at end for ArrowUp, start for ArrowDown
         if (e.key === "ArrowUp") {
@@ -1674,6 +2843,35 @@ function getCursorOffset(paraNode) {
   div.style.whiteSpace = 'pre-wrap';
   div.appendChild(fragment);
   return div.innerText.length;
+}
+
+function startEditingParagraph(pi, evt) {
+  if (state.viewMode !== "normal") return;
+  const sel = window.getSelection();
+  if (sel && !sel.isCollapsed) return;
+  const cover = state.normalCoverRange;
+  const isCoverClick = !!cover && pi >= cover.start && pi <= cover.end;
+  if (isCoverClick) {
+    state.editingPara = cover.start;
+    state.pendingEditCursorOffset = getCoverCursorOffsetFromClick(evt, cover);
+    state.pendingEditEnsureVisible = true;
+    render();
+    return;
+  }
+
+  let cursorOffset = evt ? getParagraphCursorOffsetFromClick(evt, pi) : null;
+  if (cursorOffset == null && sel && sel.rangeCount) {
+    const paraNode = getSelectionParaNode(sel);
+    if (paraNode && parseInt(paraNode.dataset.para) === pi) {
+      cursorOffset = getCursorOffset(paraNode);
+    }
+  }
+  if (cursorOffset == null) cursorOffset = 0;
+
+  state.editingPara = pi;
+  state.pendingEditCursorOffset = cursorOffset;
+  state.pendingEditEnsureVisible = false;
+  render();
 }
 
 function isCursorAtStart(paraNode) {
@@ -1849,10 +3047,197 @@ function submitComment() {
   addComment(textarea.value);
 }
 
+function normalizeLooseMatchChar(ch) {
+  if (ch === "\u2018" || ch === "\u2019" || ch === "\u0060" || ch === "\u00B4") return "'";
+  if (ch === "\u201C" || ch === "\u201D") return "\"";
+  if (ch === "\u2013" || ch === "\u2014" || ch === "\u2212") return "-";
+  if (ch === "\u00A0") return " ";
+  return ch;
+}
+
+function buildLooseTextMap(text) {
+  const out = [];
+  const map = [];
+  let i = 0;
+  while (i < text.length) {
+    const ch = normalizeLooseMatchChar(text[i]);
+    if (/\s/.test(ch)) {
+      const runStart = i;
+      i++;
+      while (i < text.length && /\s/.test(normalizeLooseMatchChar(text[i]))) i++;
+      if (out.length === 0 || out[out.length - 1] !== " ") {
+        out.push(" ");
+        map.push(runStart);
+      }
+      continue;
+    }
+    out.push(ch);
+    map.push(i);
+    i++;
+  }
+  return { text: out.join(""), map };
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+function findAllIndices(haystack, needle) {
+  const indices = [];
+  if (!needle) return indices;
+  for (let idx = haystack.indexOf(needle); idx !== -1; idx = haystack.indexOf(needle, idx + 1)) {
+    indices.push(idx);
+  }
+  return indices;
+}
+
+function chooseClosestNonOverlappingMatch(candidates, expectedStart, length, usedRanges) {
+  let best = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const start of candidates) {
+    const end = start + length;
+    const overlaps = usedRanges.some(r => rangesOverlap(start, end, r.start, r.end));
+    if (overlaps) continue;
+    const dist = Math.abs(start - expectedStart);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { start, end };
+    }
+  }
+  return best;
+}
+
+function createRangeFromTextOffsets(root, start, end) {
+  if (!root || start < 0 || end <= start) return null;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let pos = 0;
+  let startNode = null;
+  let startOffset = 0;
+  let endNode = null;
+  let endOffset = 0;
+  let lastNode = null;
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const len = node.nodeValue.length;
+    const nextPos = pos + len;
+    lastNode = node;
+
+    if (!startNode && start >= pos && start <= nextPos) {
+      startNode = node;
+      startOffset = Math.max(0, Math.min(len, start - pos));
+    }
+    if (!endNode && end >= pos && end <= nextPos) {
+      endNode = node;
+      endOffset = Math.max(0, Math.min(len, end - pos));
+      break;
+    }
+    pos = nextPos;
+  }
+
+  if (!startNode || !lastNode) return null;
+  if (!endNode) {
+    endNode = lastNode;
+    endOffset = lastNode.nodeValue.length;
+  }
+
+  const range = document.createRange();
+  range.setStart(startNode, startOffset);
+  range.setEnd(endNode, endOffset);
+  return range;
+}
+
+function findBestCommentMatchInRenderedText(fullText, sourceText, comment, usedRanges) {
+  const selected = (comment.selectedText || "").trim();
+  if (!selected) return null;
+
+  const sourceLen = Math.max(1, (sourceText || "").length);
+  const expected = Number.isInteger(comment.start)
+    ? Math.round((Math.max(0, comment.start) / sourceLen) * fullText.length)
+    : 0;
+
+  const directMatches = findAllIndices(fullText, selected);
+  const direct = chooseClosestNonOverlappingMatch(directMatches, expected, selected.length, usedRanges);
+  if (direct) return direct;
+
+  const looseFull = buildLooseTextMap(fullText);
+  const looseNeedle = buildLooseTextMap(selected).text.trim();
+  if (!looseNeedle) return null;
+  const looseMatches = findAllIndices(looseFull.text, looseNeedle);
+  let best = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const looseStart of looseMatches) {
+    const looseEnd = looseStart + looseNeedle.length;
+    const mapStart = looseFull.map[looseStart];
+    const mapEnd = looseFull.map[looseEnd - 1];
+    if (mapStart === undefined || mapEnd === undefined) continue;
+    const start = mapStart;
+    const end = mapEnd + 1;
+    const overlaps = usedRanges.some(r => rangesOverlap(start, end, r.start, r.end));
+    if (overlaps) continue;
+    const dist = Math.abs(start - expected);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { start, end };
+    }
+  }
+  return best;
+}
+
+function applyNormalCommentHighlights(renderedHtml, comments, sourceText) {
+  if (!renderedHtml || !Array.isArray(comments) || comments.length === 0) return renderedHtml;
+  const root = document.createElement("span");
+  root.innerHTML = renderedHtml;
+  const fullText = root.textContent || "";
+  if (!fullText.trim()) return renderedHtml;
+
+  const ordered = comments
+    .slice()
+    .sort((a, b) => (a.start ?? 0) - (b.start ?? 0));
+
+  const usedRanges = [];
+  const matches = [];
+  for (const c of ordered) {
+    const match = findBestCommentMatchInRenderedText(fullText, sourceText, c, usedRanges);
+    if (!match) continue;
+    usedRanges.push(match);
+    matches.push({ ...match, comment: c });
+  }
+
+  matches.sort((a, b) => b.start - a.start);
+  for (const m of matches) {
+    const range = createRangeFromTextOffsets(root, m.start, m.end);
+    if (!range) continue;
+    const color = COLORS[m.comment.colorIdx % COLORS.length];
+    const isActive = state.activeCommentId === m.comment.id;
+    const span = document.createElement("span");
+    span.className = `highlight${isActive ? " active" : ""}`;
+    span.setAttribute("data-comment-id", String(m.comment.id));
+    span.setAttribute(
+      "style",
+      `background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? `outline:2px solid ${color.border};outline-offset:1px;` : ""}`
+    );
+    span.setAttribute(
+      "onclick",
+      `event.stopPropagation();state.activeCommentId=${state.activeCommentId === m.comment.id ? "null" : m.comment.id};render()`
+    );
+
+    const frag = range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+
+  return root.innerHTML;
+}
+
 // ── Render ─────────────────────────────────────────────
 function render() {
   const app = document.getElementById("app");
   const pendingCount = getPendingCount();
+  if (state.editingCommentId !== null && !state.comments.some(c => c.id === state.editingCommentId)) {
+    state.editingCommentId = null;
+    state.editingCommentText = "";
+  }
 
   let html = "";
 
@@ -1877,20 +3262,25 @@ function render() {
   } else {
     html += `<span class="header-title">Rick's Docs</span>`;
   }
+  const headerCommentCount = state.comments.length;
   html += `<span class="header-status">`;
-  if (state.comments.length > 0) html += `${state.comments.length} comment${state.comments.length !== 1 ? "s" : ""}`;
-  if (state.comments.length > 0 && pendingCount > 0) html += " · ";
+  if (headerCommentCount > 0) html += `${headerCommentCount} comment${headerCommentCount !== 1 ? "s" : ""}`;
+  if (headerCommentCount > 0 && pendingCount > 0) html += " · ";
   if (pendingCount > 0) html += `${pendingCount} change${pendingCount !== 1 ? "s" : ""}`;
-  if (state.comments.length === 0 && pendingCount === 0) html += "No changes";
-  html += `</span></div><div class="header-actions">`;
+  if (headerCommentCount === 0 && pendingCount === 0) html += "No changes";
+  html += `</span></div>`;
+  if (state.paragraphs.length > 0) {
+    html += `<button class="btn btn-header-jump" onclick="scrollToDocumentTop()" title="Jump to top of document">↑ Back to Top</button>`;
+  }
+  html += `<div class="header-actions">`;
   if (state.paragraphs.length > 0) {
     // Mode toggle
     html += `<div class="mode-toggle">
-      <button class="mode-toggle-btn${state.viewMode === 'source' ? ' active' : ''}" onclick="state.viewMode='source';state.editingPara=null;latexCache.clear();render()" title="Source mode (Cmd+Shift+M)">
+      <button class="mode-toggle-btn${state.viewMode === 'source' ? ' active' : ''}" onclick="setViewMode('source')" title="Source mode (Cmd+Shift+M)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         Source
       </button>
-      <button class="mode-toggle-btn${state.viewMode === 'normal' ? ' active' : ''}" onclick="state.viewMode='normal';state.editingPara=null;latexCache.clear();render()" title="Normal mode (Cmd+Shift+M)">
+      <button class="mode-toggle-btn${state.viewMode === 'normal' ? ' active' : ''}" onclick="setViewMode('normal')" title="Normal mode (Cmd+Shift+M)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         Normal
       </button>
@@ -1934,15 +3324,76 @@ function render() {
   }
 
   if (state.paragraphs.length > 0) {
+  const reviseDisabled = state.comments.length === 0 && !state.globalInstruction.trim();
+  const hasComments = state.comments.length > 0;
+  const hasGlobal = state.globalInstruction.trim().length > 0;
+  const plainParasForScope = getPlainParagraphs();
+  const hasDocumentBoundary = plainParasForScope.some(p => /\\begin\{document\}/.test(p));
+  const scopeInfo = getLatexScopeInfo(plainParasForScope);
+  const normalizedScope = normalizeRevisionScope(state.revisionScope, scopeInfo);
+  if (normalizedScope !== state.revisionScope) state.revisionScope = normalizedScope;
+  const sectionScopeEnabled = scopeInfo.isLatexDoc && scopeInfo.sectionBlocks.length > 0;
+  const subsectionScopeEnabled = scopeInfo.isLatexDoc && scopeInfo.subsectionBlocks.length > 0;
+  const outlineItems = scopeInfo.isLatexDoc ? getLatexOutlineItems(plainParasForScope) : [];
+  const forceFull = !hasComments && hasGlobal;
+  const effectiveScope = forceFull ? "full" : normalizedScope;
+  const hasOutline = outlineItems.length > 0;
+
   // Layout
-  html += `<div class="layout">`;
+  const isNormal = state.viewMode === "normal";
+  const coverRange = isNormal ? getCoverPageSourceRange(plainParasForScope) : null;
+  state.normalCoverRange = coverRange;
+  html += `<div class="layout${isNormal ? ' normal-mode' : ''}${hasOutline ? ' has-outline' : ''}">`;
+
+  // Left controls
+  html += `<aside class="control-column">
+    <div class="control-panel">
+      <div class="control-title">Revision Controls</div>
+      <div class="control-group">
+        <label class="control-label" for="left-model-select">Model</label>
+        <select id="left-model-select" class="model-select" onchange="state.model=this.value;render()">
+          <option value="claude-sonnet-4-5-20250929"${state.model === "claude-sonnet-4-5-20250929" ? " selected" : ""}>Sonnet 4.5</option>
+          <option value="claude-opus-4-6"${state.model === "claude-opus-4-6" ? " selected" : ""}>Opus 4.6</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label class="control-label" for="left-scope-select">Scope</label>
+      <select id="left-scope-select" class="model-select" onchange="state.revisionScope=this.value" ${forceFull ? 'disabled' : ''}>
+          <option value="focused"${effectiveScope === "focused" ? " selected" : ""}>Focused</option>
+          <option value="section"${effectiveScope === "section" ? " selected" : ""}${sectionScopeEnabled ? "" : " disabled"}>Section</option>
+          <option value="subsection"${effectiveScope === "subsection" ? " selected" : ""}${subsectionScopeEnabled ? "" : " disabled"}>Subsection</option>
+          <option value="full"${effectiveScope === "full" ? " selected" : ""}>Full Doc</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label class="control-label" for="left-files-select">Files</label>
+        <select id="left-files-select" class="model-select" onchange="state.revisionAttachments=this.value;scheduleSave()">
+          <option value="with"${state.revisionAttachments === "with" ? " selected" : ""}>Included</option>
+          <option value="none"${state.revisionAttachments === "none" ? " selected" : ""}>Not Included</option>
+        </select>
+      </div>
+      <button class="btn btn-revise" id="btn-revise" onclick="requestRevision()" ${reviseDisabled ? 'disabled' : ''}>⟳ Request Revision</button>`;
+  if (outlineItems.length > 0) {
+    html += `<div class="control-divider"></div>
+      <div class="control-title">Outline</div>
+      <div class="outline-shell">
+      <div class="outline-list">`;
+    outlineItems.forEach(item => {
+      const isActive = state.activeOutlinePara === item.paraIndex;
+      html += `<button class="outline-item level-${item.level}${isActive ? ' active' : ''}" onclick="scrollToParagraph(${item.paraIndex})" title="${esc(item.title)}">${esc(item.title)}</button>`;
+    });
+    html += `</div></div>`;
+  }
+  html += `
+    </div>
+  </aside>`;
 
   // Document column (global bar + document)
   html += `<div class="doc-column">`;
 
   // Attachments
   html += `<div class="attachments-bar">`;
-  html += `<button class="attach-btn" onclick="attachFile()">+ Attach PDF</button>`;
+  html += `<button class="attach-btn" onclick="attachFile()">+ Attach File</button>`;
   state.attachments.forEach((a, i) => {
     html += `<span class="attach-chip">
       <span>${esc(a.name)}</span>
@@ -1957,140 +3408,68 @@ function render() {
       oninput="state.globalInstruction=this.value;scheduleSave();var b=document.getElementById('btn-revise');if(b)b.disabled=!this.value.trim()&&state.comments.length===0">${esc(state.globalInstruction)}</textarea>
   </div>`;
 
-  // Revision controls row (model, scope, button)
-  {
-    const reviseDisabled = state.comments.length === 0 && !state.globalInstruction.trim();
-    const hasComments = state.comments.length > 0;
-    const hasGlobal = state.globalInstruction.trim().length > 0;
-    const plainParasForScope = getPlainParagraphs();
-    const scopeInfo = getLatexScopeInfo(plainParasForScope);
-    const normalizedScope = normalizeRevisionScope(state.revisionScope, scopeInfo);
-    if (normalizedScope !== state.revisionScope) state.revisionScope = normalizedScope;
-    const sectionScopeEnabled = scopeInfo.isLatexDoc && scopeInfo.sectionBlocks.length > 0;
-    const subsectionScopeEnabled = scopeInfo.isLatexDoc && scopeInfo.subsectionBlocks.length > 0;
-    const forceFull = !hasComments && hasGlobal;
-    const effectiveScope = forceFull ? "full" : normalizedScope;
-    html += `<div class="revision-bar">
-      <select class="model-select" onchange="state.model=this.value;render()">
-        <option value="claude-sonnet-4-5-20250929"${state.model === "claude-sonnet-4-5-20250929" ? " selected" : ""}>Sonnet 4.5</option>
-        <option value="claude-opus-4-6"${state.model === "claude-opus-4-6" ? " selected" : ""}>Opus 4.6</option>
-      </select>
-      <select class="model-select" id="scope-select" onchange="state.revisionScope=this.value" ${forceFull ? 'disabled' : ''}>
-        <option value="focused"${effectiveScope === "focused" ? " selected" : ""}>Focused</option>
-        <option value="section"${effectiveScope === "section" ? " selected" : ""}${sectionScopeEnabled ? "" : " disabled"}>Section</option>
-        <option value="subsection"${effectiveScope === "subsection" ? " selected" : ""}${subsectionScopeEnabled ? "" : " disabled"}>Subsection</option>
-        <option value="full"${effectiveScope === "full" ? " selected" : ""}>Full Doc</option>
-      </select>
-      <span class="spacer"></span>
-      <button class="btn btn-revise" id="btn-revise" onclick="requestRevision()" ${reviseDisabled ? 'disabled' : ''}>⟳ Request Revision</button>
-    </div>`;
-  }
-
   // Document
-  const isNormal = state.viewMode === "normal";
+  const latexRenderCtx = {
+    nextFootnoteNumber: 1,
+    macros: new Map(),
+    coverNotes: [],
+    nextCoverNoteNumber: 1,
+    hasAbstract: plainParasForScope.some(p => /\\begin\{abstract\}/.test(p)),
+    documentMode: hasDocumentBoundary,
+    inDocument: !hasDocumentBoundary,
+    afterDocumentEnd: false,
+    inAbstract: false,
+    abstractBuffer: "",
+  };
   const docCE = state.paragraphs.length > 0 ? ' contenteditable="true"' : '';
   html += `<div class="document"${docCE}>`;
+  if (IS_SAFARI) html += `<div id="safari-selection-overlay" class="safari-selection-overlay" contenteditable="false"></div>`;
   state.paragraphs.forEach((para, pi) => {
     if (isNormal) {
-      const hasPendingChanges = para.segments.some(s => s.type === "change" && s.status === "pending");
-      const isEditing = pi === state.editingPara;
+      const isCoverPara = !!coverRange && pi >= coverRange.start && pi <= coverRange.end;
+      if (isCoverPara && pi !== coverRange.start) return;
+
+      const renderStart = isCoverPara ? coverRange.start : pi;
+      const renderEnd = isCoverPara ? coverRange.end : pi;
+      const hasPendingChanges = state.paragraphs
+        .slice(renderStart, renderEnd + 1)
+        .some(p => p.segments.some(s => s.type === "change" && s.status === "pending"));
+      const isEditing = renderStart === state.editingPara;
 
       if (isEditing && !hasPendingChanges) {
-        // ── Normal mode, editing paragraph: render as Source-style ──
-        html += `<p class="paragraph paragraph-editing" data-para="${pi}">`;
-        para.segments.forEach((seg, si) => {
-          if (seg.type === "change" && seg.status === "pending") {
-            html += `<span class="change-old">${esc(seg.oldContent)}</span>`;
-            html += `<span class="change-arrow"> → </span>`;
-            html += `<span class="change-new">${esc(seg.newContent)}</span>`;
-            html += `<button class="change-btn change-btn-accept" onclick="event.stopPropagation();acceptChange('${seg.id}')">✓</button>`;
-            html += `<button class="change-btn change-btn-reject" onclick="event.stopPropagation();rejectChange('${seg.id}')">✕</button>`;
-          } else if (seg.flash) {
-            html += `<span class="change-flash">${esc(seg.content)}</span>`;
-          } else {
-            const content = seg.content;
-            const paraComments = state.comments.filter(c => c.paraIndex === pi);
-            if (paraComments.length === 0) {
-              html += esc(content);
-            } else {
-              let offset = 0;
-              for (let j = 0; j < si; j++) {
-                const s = para.segments[j];
-                offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
-              }
-              const segStart = offset;
-              const segEnd = segStart + content.length;
-              const overlapping = paraComments
-                .filter(c => c.start < segEnd && c.end > segStart)
-                .sort((a, b) => a.start - b.start);
-              if (overlapping.length === 0) {
-                html += esc(content);
-              } else {
-                let cursor = 0;
-                for (const c of overlapping) {
-                  const relStart = Math.max(0, c.start - segStart);
-                  const relEnd = Math.min(content.length, c.end - segStart);
-                  if (relStart > cursor) html += esc(content.slice(cursor, relStart));
-                  const color = COLORS[c.colorIdx % COLORS.length];
-                  const isActive = state.activeCommentId === c.id;
-                  html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
-                    style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
-                    onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
-                  >${esc(content.slice(relStart, relEnd))}</span>`;
-                  cursor = relEnd;
-                }
-                if (cursor < content.length) html += esc(content.slice(cursor));
-              }
-            }
-          }
-        });
+        // Keep editable content as plain text so native cursor/selection shortcuts
+        // behave consistently on Safari and macOS.
+        const sourceText = isCoverPara
+          ? getCombinedSourceText(renderStart, renderEnd)
+          : getPlainText(para.segments);
+        html += `<p class="paragraph paragraph-editing" data-para="${renderStart}">${esc(sourceText)}`;
         html += `</p>`;
       } else {
         // ── Normal mode: rendered LaTeX, click to edit ──
-        const clickHandler = hasPendingChanges ? '' : ` onclick="if(window.getSelection().isCollapsed){state.editingPara=${pi};render()}"`;
-        html += `<p class="paragraph paragraph-normal" data-para="${pi}"${clickHandler}>`;
-        para.segments.forEach((seg, si) => {
-          if (seg.type === "change" && seg.status === "pending") {
-            html += `<span class="change-pending-normal">${renderLatex(seg.newContent)}</span>`;
-          } else if (seg.flash) {
-            html += `<span class="change-flash">${renderLatex(seg.content)}</span>`;
-          } else {
-            const content = seg.content;
-            const paraComments = state.comments.filter(c => c.paraIndex === pi);
-            if (paraComments.length === 0) {
-              html += renderLatex(content);
+        const clickHandler = hasPendingChanges ? '' : ` onclick="startEditingParagraph(${renderStart}, event)"`;
+        let renderedNormal = "";
+        for (let rpi = renderStart; rpi <= renderEnd; rpi++) {
+          const rp = state.paragraphs[rpi];
+          if (!rp) continue;
+          rp.segments.forEach((seg) => {
+            if (seg.type === "change" && seg.status === "pending") {
+              renderedNormal += `<span class="change-pending-normal">${renderLatex(seg.newContent, latexRenderCtx)}</span>`;
+            } else if (seg.flash) {
+              renderedNormal += `<span class="change-flash">${renderLatex(seg.content, latexRenderCtx)}</span>`;
             } else {
-              let offset = 0;
-              for (let j = 0; j < si; j++) {
-                const s = para.segments[j];
-                offset += s.type === "text" ? s.content.length : (s.oldContent || s.content || "").length;
-              }
-              const segStart = offset;
-              const segEnd = segStart + content.length;
-              const overlapping = paraComments
-                .filter(c => c.start < segEnd && c.end > segStart)
-                .sort((a, b) => a.start - b.start);
-              if (overlapping.length === 0) {
-                html += renderLatex(content);
-              } else {
-                let cursor = 0;
-                for (const c of overlapping) {
-                  const relStart = Math.max(0, c.start - segStart);
-                  const relEnd = Math.min(content.length, c.end - segStart);
-                  if (relStart > cursor) html += renderLatex(content.slice(cursor, relStart));
-                  const color = COLORS[c.colorIdx % COLORS.length];
-                  const isActive = state.activeCommentId === c.id;
-                  html += `<span class="highlight${isActive ? ' active' : ''}" data-comment-id="${c.id}"
-                    style="background:${color.bg};border-bottom:2px solid ${color.border};${isActive ? 'outline:2px solid ' + color.border + ';outline-offset:1px;' : ''}"
-                    onclick="event.stopPropagation();state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()"
-                  >${renderLatex(content.slice(relStart, relEnd))}</span>`;
-                  cursor = relEnd;
-                }
-                if (cursor < content.length) html += renderLatex(content.slice(cursor));
-              }
+              renderedNormal += renderLatex(seg.content, latexRenderCtx);
             }
+          });
+        }
+        if (!isCoverPara) {
+          const normalComments = state.comments.filter(c => c.paraIndex === renderStart);
+          if (normalComments.length > 0) {
+            const sourceText = getPlainText(state.paragraphs[renderStart].segments);
+            renderedNormal = applyNormalCommentHighlights(renderedNormal, normalComments, sourceText);
           }
-        });
+        }
+        if (!renderedNormal.trim()) return;
+        html += `<p class="paragraph paragraph-normal" data-para="${renderStart}"${clickHandler}>${renderedNormal}`;
         html += `</p>`;
       }
     } else {
@@ -2153,6 +3532,9 @@ function render() {
       html += `</p>`;
     }
   });
+  if (isNormal && latexRenderCtx.coverNotes.length > 0) {
+    html += renderCoverNotes(latexRenderCtx);
+  }
   html += `</div>`; // .document
   html += `</div>`; // .doc-column
 
@@ -2163,15 +3545,28 @@ function render() {
     state.comments.forEach(c => {
       const color = COLORS[c.colorIdx % COLORS.length];
       const isActive = state.activeCommentId === c.id;
+      const isEditingComment = state.editingCommentId === c.id;
       const quote = c.selectedText.length > 35 ? c.selectedText.slice(0, 35) + "…" : c.selectedText;
       html += `<div class="margin-comment" data-sidebar-comment="${c.id}"
         style="border-left:3px solid ${color.border};background:${isActive ? color.bg : 'rgba(248,250,252,0.8)'}"
         onclick="state.activeCommentId=${state.activeCommentId === c.id ? 'null' : c.id};render()">
         <div class="margin-comment-quote">
           <span>"${esc(quote)}"</span>
-          <button class="margin-comment-delete" onclick="event.stopPropagation();deleteComment(${c.id})">×</button>
+          <span class="margin-comment-actions">
+            <button class="margin-comment-edit" onclick="event.stopPropagation();beginEditComment(${c.id})">${isEditingComment ? "Editing" : "Edit"}</button>
+            <button class="margin-comment-delete" onclick="event.stopPropagation();deleteComment(${c.id})">×</button>
+          </span>
         </div>
-        <div class="margin-comment-text">${esc(c.comment)}</div>
+        ${isEditingComment
+          ? `<div class="margin-comment-editor" onclick="event.stopPropagation()">
+              <textarea id="comment-edit-${c.id}" class="margin-comment-editor-input" oninput="state.editingCommentText=this.value" onkeydown="handleEditCommentKeydown(event, ${c.id})">${esc(state.editingCommentText || "")}</textarea>
+              <div class="margin-comment-editor-actions">
+                <button class="margin-comment-editor-cancel" onclick="event.stopPropagation();cancelEditComment()">Cancel</button>
+                <button class="margin-comment-editor-save" onclick="event.stopPropagation();saveEditedComment(${c.id})"${(state.editingCommentText || "").trim().length === 0 ? " disabled" : ""}>Save</button>
+              </div>
+            </div>`
+          : `<div class="margin-comment-text">${esc(c.comment)}</div>`
+        }
       </div>`;
     });
   }
@@ -2250,14 +3645,40 @@ function render() {
     docEl.oncopy = handleCopy;
     const editingNode = docEl.querySelector(`.paragraph-editing[data-para="${state.editingPara}"]`);
     if (editingNode) {
+      const hadFocus = document.activeElement === docEl;
+      const requestedOffset = typeof state.pendingEditCursorOffset === "number"
+        ? state.pendingEditCursorOffset
+        : null;
+      const shouldEnsureVisible = state.pendingEditEnsureVisible === true;
+      const prevScrollX = window.scrollX;
+      const prevScrollY = window.scrollY;
       // Focus the document (contenteditable host) and position cursor in editing paragraph
-      docEl.focus();
-      const range = document.createRange();
-      range.selectNodeContents(editingNode);
-      range.collapse(true);
-      const initSel = window.getSelection();
-      initSel.removeAllRanges();
-      initSel.addRange(range);
+      try {
+        docEl.focus({ preventScroll: true });
+      } catch {
+        docEl.focus();
+      }
+      if (requestedOffset !== null) {
+        placeCursorAtOffset(editingNode, requestedOffset);
+        state.pendingEditCursorOffset = null;
+      } else if (!hadFocus) {
+        const range = document.createRange();
+        range.selectNodeContents(editingNode);
+        range.collapse(true);
+        const initSel = window.getSelection();
+        initSel.removeAllRanges();
+        initSel.addRange(range);
+      }
+      if (window.scrollX !== prevScrollX || window.scrollY !== prevScrollY) {
+        window.scrollTo(prevScrollX, prevScrollY);
+      }
+      if (shouldEnsureVisible) {
+        requestAnimationFrame(() => {
+          ensureActiveCaretVisible();
+          requestAnimationFrame(ensureActiveCaretVisible);
+        });
+      }
+      state.pendingEditEnsureVisible = false;
       const blurredPara = state.editingPara;
       docEl.addEventListener("blur", () => {
         setTimeout(() => {
@@ -2271,7 +3692,19 @@ function render() {
           const card = document.getElementById("comment-card");
           if (toolbar && toolbar.contains(active)) return;
           if (card && card.contains(active)) return;
+          // Don't force a render while user is moving focus to another control
+          // (e.g. global instruction textarea), otherwise first click focus is lost.
+          if (active && active.closest && (
+            active.closest(".global-bar") ||
+            active.closest(".control-panel") ||
+            active.closest(".attachments-bar") ||
+            active.closest(".header") ||
+            active.closest(".comment-card") ||
+            active.closest(".sidebar")
+          )) return;
           state.editingPara = null;
+          state.pendingEditCursorOffset = null;
+          state.pendingEditEnsureVisible = false;
           render();
         }, 50);
       });
@@ -2279,12 +3712,19 @@ function render() {
   }
 
   alignSidebarComments();
+  updateHeaderJumpVisibility();
+  updateSafariSelectionHighlight();
 }
 
 function alignSidebarComments() {
   const sidebar = document.querySelector(".sidebar");
   const docEl = document.querySelector(".document");
   if (!sidebar || !docEl) return;
+  const cards = Array.from(sidebar.querySelectorAll(".margin-comment"));
+  cards.forEach(card => {
+    card.style.position = "absolute";
+    card.style.top = "";
+  });
 
   const docRect = docEl.getBoundingClientRect();
   const sidebarRect = sidebar.getBoundingClientRect();
@@ -2293,11 +3733,16 @@ function alignSidebarComments() {
   state.comments.forEach(c => {
     const highlight = docEl.querySelector(`[data-comment-id="${c.id}"]`);
     const card = sidebar.querySelector(`[data-sidebar-comment="${c.id}"]`);
-    if (!highlight || !card) return;
+    if (!card) return;
 
-    const highlightRect = highlight.getBoundingClientRect();
+    const paraNode = docEl.querySelector(`.paragraph[data-para="${c.paraIndex}"]`);
+    const anchorRect = highlight
+      ? highlight.getBoundingClientRect()
+      : (paraNode ? paraNode.getBoundingClientRect() : null);
+    if (!anchorRect) return;
+
     // Target top relative to the sidebar's top
-    const desiredTop = highlightRect.top - sidebarRect.top;
+    const desiredTop = anchorRect.top - sidebarRect.top;
     const top = Math.max(desiredTop, minNextTop);
     card.style.top = top + "px";
     minNextTop = top + card.offsetHeight + 6;
@@ -2306,6 +3751,8 @@ function alignSidebarComments() {
   // Set sidebar min-height so it encompasses all positioned comments
   if (state.comments.length > 0) {
     sidebar.style.minHeight = minNextTop + "px";
+  } else {
+    sidebar.style.minHeight = "";
   }
 }
 
@@ -2317,34 +3764,585 @@ function esc(str) {
 
 // ── LaTeX rendering ────────────────────────────────────
 const latexCache = new Map();
+const KATEX_MACROS = {
+  "\\E": "\\mathbb{E}",
+  "\\mathbbm": "\\mathbf",
+};
+const ESCAPED_DOLLAR_TOKEN = "__LATEX_ESCAPED_DOLLAR__";
 
-function renderLatex(text) {
-  if (typeof katex === "undefined") return esc(text);
+function sanitizeMathForKatex(math) {
+  // Labels are metadata for cross-references and should not render visibly.
+  return (math || "")
+    .replace(/\\label\{[^}]*\}/g, "")
+    .replace(/\\label\s+[^\s\\]+/g, "");
+}
 
-  const cached = latexCache.get(text);
-  if (cached !== undefined) return cached;
+function normalizeMultilineMathBody(mathBody) {
+  if (!mathBody) return "";
+  let body = mathBody;
+  // Accept a single trailing backslash at end-of-line as an intended line break.
+  body = body.replace(/\\\s*(?:\r?\n)/g, "\\\\\n");
+  const hasExplicitLineBreak = /\\\\/.test(body);
+  if (!hasExplicitLineBreak) {
+    const lines = body
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    if (lines.length > 1) {
+      body = lines.join(" \\\\ ");
+    }
+  }
+  return body;
+}
+
+function readBalancedGroup(text, startIdx) {
+  if (!text || startIdx < 0 || startIdx >= text.length || text[startIdx] !== "{") return null;
+  let depth = 1;
+  let i = startIdx + 1;
+  while (i < text.length && depth > 0) {
+    const ch = text[i];
+    if (ch === "\\") {
+      i += 2;
+      continue;
+    }
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    i++;
+  }
+  if (depth !== 0) return null;
+  return { content: text.slice(startIdx + 1, i - 1), end: i };
+}
+
+function replaceOneArgCommand(text, command, replacer, allowStar) {
+  if (!text || !command) return text;
+  let output = "";
+  let cursor = 0;
+  while (cursor < text.length) {
+    const idx = text.indexOf(command, cursor);
+    if (idx === -1) {
+      output += text.slice(cursor);
+      break;
+    }
+    output += text.slice(cursor, idx);
+    let j = idx + command.length;
+    if (/[A-Za-z@]/.test(text[j] || "")) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    if (allowStar && text[j] === "*") j++;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg = readBalancedGroup(text, j);
+    if (!arg) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    output += replacer(arg.content);
+    cursor = arg.end;
+  }
+  return output;
+}
+
+function replaceTwoArgCommand(text, command, replacer) {
+  if (!text || !command) return text;
+  let output = "";
+  let cursor = 0;
+  while (cursor < text.length) {
+    const idx = text.indexOf(command, cursor);
+    if (idx === -1) {
+      output += text.slice(cursor);
+      break;
+    }
+    output += text.slice(cursor, idx);
+    let j = idx + command.length;
+    if (/[A-Za-z@]/.test(text[j] || "")) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg1 = readBalancedGroup(text, j);
+    if (!arg1) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    j = arg1.end;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg2 = readBalancedGroup(text, j);
+    if (!arg2) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    output += replacer(arg1.content, arg2.content);
+    cursor = arg2.end;
+  }
+  return output;
+}
+
+function resolveIfSubmitBranches(text) {
+  if (!text || !text.includes("\\ifsubmit")) return text;
+  let output = "";
+  let cursor = 0;
+  const token = "\\ifsubmit";
+  while (cursor < text.length) {
+    const idx = text.indexOf(token, cursor);
+    if (idx === -1) {
+      output += text.slice(cursor);
+      break;
+    }
+    output += text.slice(cursor, idx);
+    let j = idx + token.length;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg1 = readBalancedGroup(text, j);
+    if (!arg1) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    j = arg1.end;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const arg2 = readBalancedGroup(text, j);
+    if (!arg2) {
+      output += text.slice(idx, j);
+      cursor = j;
+      continue;
+    }
+    output += arg1.content.trim() ? arg1.content : arg2.content;
+    cursor = arg2.end;
+  }
+  return output;
+}
+
+function stripLatexComments(text) {
+  if (!text || !text.includes("%")) return text;
+  return text
+    .split("\n")
+    .map(line => {
+      let hadComment = false;
+      let stripped = line;
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === "%" && (i === 0 || line[i - 1] !== "\\")) {
+          stripped = line.slice(0, i);
+          hadComment = true;
+          break;
+        }
+      }
+      return { text: stripped.replace(/\s+$/g, ""), hadComment };
+    })
+    .filter(item => !(item.hadComment && item.text.trim().length === 0))
+    .map(item => item.text)
+    .join("\n");
+}
+
+function renderAbstractBlock(body, renderCtx) {
+  return `<span class="latex-cover-abstract"><span class="latex-cover-abstract-label">Abstract</span><span class="latex-cover-abstract-text">${normalizeCoverInlineText((body || "").trim(), renderCtx)}</span></span>${renderCoverNotes(renderCtx)}`;
+}
+
+function replaceAbstractEnvironment(text, renderCtx) {
+  if (!text || !renderCtx) return text;
+  const beginToken = "\\begin{abstract}";
+  const endToken = "\\end{abstract}";
+  let output = "";
+  let remaining = text;
+
+  if (renderCtx.inAbstract) {
+    const endIdx = remaining.indexOf(endToken);
+    if (endIdx === -1) {
+      renderCtx.abstractBuffer += (renderCtx.abstractBuffer ? "\n\n" : "") + remaining;
+      return "";
+    }
+    renderCtx.abstractBuffer += (renderCtx.abstractBuffer ? "\n\n" : "") + remaining.slice(0, endIdx);
+    output += renderAbstractBlock(renderCtx.abstractBuffer, renderCtx);
+    renderCtx.abstractBuffer = "";
+    renderCtx.inAbstract = false;
+    remaining = remaining.slice(endIdx + endToken.length);
+  }
+
+  while (remaining.length > 0) {
+    const beginIdx = remaining.indexOf(beginToken);
+    if (beginIdx === -1) {
+      output += remaining;
+      break;
+    }
+
+    output += remaining.slice(0, beginIdx);
+    remaining = remaining.slice(beginIdx + beginToken.length);
+    const endIdx = remaining.indexOf(endToken);
+    if (endIdx === -1) {
+      renderCtx.inAbstract = true;
+      renderCtx.abstractBuffer = remaining;
+      break;
+    }
+
+    output += renderAbstractBlock(remaining.slice(0, endIdx), renderCtx);
+    remaining = remaining.slice(endIdx + endToken.length);
+  }
+
+  return output;
+}
+
+function extractLatexDefinitions(text, renderCtx) {
+  if (!text || !renderCtx) return text;
+  if (!renderCtx.macros) renderCtx.macros = new Map();
+
+  let output = "";
+  let cursor = 0;
+  while (cursor < text.length) {
+    const defToken = "\\global\\long\\def";
+    const newToken = "\\newcommand";
+    const defIdx = text.indexOf(defToken, cursor);
+    const newIdx = text.indexOf(newToken, cursor);
+
+    let idx = -1;
+    let kind = "";
+    if (defIdx !== -1 && (newIdx === -1 || defIdx < newIdx)) {
+      idx = defIdx;
+      kind = "def";
+    } else if (newIdx !== -1) {
+      idx = newIdx;
+      kind = "new";
+    }
+
+    if (idx === -1) {
+      output += text.slice(cursor);
+      break;
+    }
+
+    output += text.slice(cursor, idx);
+
+    if (kind === "def") {
+      let j = idx + defToken.length;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      if (text[j] !== "\\") {
+        output += text.slice(idx, j + 1);
+        cursor = j + 1;
+        continue;
+      }
+      let k = j + 1;
+      while (k < text.length && /[A-Za-z@]/.test(text[k])) k++;
+      if (k === j + 1 && k < text.length) k++;
+      const macro = text.slice(j, k);
+      while (k < text.length && /\s/.test(text[k])) k++;
+      const body = readBalancedGroup(text, k);
+      if (!macro || !body) {
+        output += text.slice(idx, k + 1);
+        cursor = k + 1;
+        continue;
+      }
+      renderCtx.macros.set(macro, body.content);
+      cursor = body.end;
+      continue;
+    }
+
+    if (kind === "new") {
+      let j = idx + newToken.length;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      const nameGroup = readBalancedGroup(text, j);
+      if (!nameGroup) {
+        output += text.slice(idx, j + 1);
+        cursor = j + 1;
+        continue;
+      }
+      j = nameGroup.end;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      if (text[j] === "[") {
+        const close = text.indexOf("]", j + 1);
+        if (close !== -1) {
+          j = close + 1;
+          while (j < text.length && /\s/.test(text[j])) j++;
+        }
+      }
+      const body = readBalancedGroup(text, j);
+      const macroName = (nameGroup.content || "").trim();
+      if (!body || !/^\\[A-Za-z@]+$/.test(macroName)) {
+        output += text.slice(idx, j + 1);
+        cursor = j + 1;
+        continue;
+      }
+      renderCtx.macros.set(macroName, body.content);
+      cursor = body.end;
+      continue;
+    }
+  }
+
+  return output;
+}
+
+function expandDefinedLatexMacros(text, renderCtx) {
+  if (!text || !renderCtx || !renderCtx.macros || renderCtx.macros.size === 0) return text;
+  let output = text;
+  const entries = Array.from(renderCtx.macros.entries()).sort((a, b) => b[0].length - a[0].length);
+  for (const [macro, body] of entries) {
+    const escaped = macro.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    output = output.replace(new RegExp(`${escaped}(?![A-Za-z@])`, "g"), body);
+  }
+  return output;
+}
+
+function normalizeCoverInlineText(text, renderCtx) {
+  let output = text || "";
+  output = replaceTwoArgCommand(output, "\\href", (_url, label) => label);
+  output = output.replace(/\\email\b/gi, "Email");
+  output = replaceOneArgCommand(output, "\\thanks", (note) => {
+    const n = renderCtx.nextCoverNoteNumber++;
+    renderCtx.coverNotes.push({ n, note });
+    return `<sup class="latex-cover-note-marker">${formatCoverNoteMarker(n)}</sup>`;
+  }, false);
+  output = output.replace(/\\today\b/g, new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }));
+  output = output.replace(/\\and\b/g, '<span class="latex-cover-author-sep"></span>');
+  output = output.replace(/\\\\/g, '<br>');
+  output = output.replace(/\s*<br>\s*/g, '<br>');
+  output = output.replace(/\s+/g, ' ');
+  output = output.replace(/\s*<br>\s*/g, '<br>');
+  return output.trim();
+}
+
+function formatCoverNoteMarker(n) {
+  const symbols = ["*", "\u2020", "\u2021", "\u00a7"];
+  if (n <= symbols.length) return symbols[n - 1];
+  return `*${n - symbols.length}`;
+}
+
+function renderCoverNotes(renderCtx) {
+  if (!renderCtx || !renderCtx.coverNotes || renderCtx.coverNotes.length === 0) return "";
+  const notes = renderCtx.coverNotes
+    .map(item => `<span class="latex-cover-note-item"><sup class="latex-cover-note-marker">${formatCoverNoteMarker(item.n)}</sup> ${normalizeCoverInlineText(item.note, renderCtx)}</span>`)
+    .join("");
+  renderCtx.coverNotes = [];
+  return `<span class="latex-cover-notes">${notes}</span>`;
+}
+
+function replaceLatexFootnotes(text, renderCtx) {
+  if (!text || !renderCtx || !text.includes("\\footnote{")) return text;
+
+  let output = "";
+  let cursor = 0;
+  const token = "\\footnote{";
+
+  while (cursor < text.length) {
+    const start = text.indexOf(token, cursor);
+    if (start === -1) {
+      output += text.slice(cursor);
+      break;
+    }
+
+    output += text.slice(cursor, start);
+
+    const contentStart = start + token.length;
+    let depth = 1;
+    let i = contentStart;
+
+    while (i < text.length && depth > 0) {
+      const ch = text[i];
+      if (ch === "\\") {
+        // Skip escaped delimiter chars like \{ and \} so brace matching stays correct.
+        i += 2;
+        continue;
+      }
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+      i++;
+    }
+
+    // Malformed command: keep remaining text unchanged.
+    if (depth !== 0) {
+      output += text.slice(start);
+      return output;
+    }
+
+    const footnoteBody = text.slice(contentStart, i - 1);
+    const n = renderCtx.nextFootnoteNumber++;
+    output += `<span class="latex-footnote-inline"><sup class="latex-footnote-marker">${n}</sup><span class="latex-footnote-text">(${footnoteBody})</span></span>`;
+    cursor = i;
+  }
+
+  return output;
+}
+
+function renderLatex(text, renderCtx) {
+  const ctx = renderCtx && typeof renderCtx.nextFootnoteNumber === "number"
+    ? renderCtx
+    : { nextFootnoteNumber: 1, macros: new Map(), coverNotes: [], nextCoverNoteNumber: 1, hasAbstract: false, inDocument: true, afterDocumentEnd: false, documentMode: false, inAbstract: false, abstractBuffer: "" };
+  if (!ctx.macros) ctx.macros = new Map();
+  if (!ctx.coverNotes) ctx.coverNotes = [];
+  if (typeof ctx.nextCoverNoteNumber !== "number") ctx.nextCoverNoteNumber = 1;
+  if (typeof ctx.hasAbstract !== "boolean") ctx.hasAbstract = false;
+  if (typeof ctx.inDocument !== "boolean") ctx.inDocument = true;
+  if (typeof ctx.afterDocumentEnd !== "boolean") ctx.afterDocumentEnd = false;
+  if (typeof ctx.documentMode !== "boolean") ctx.documentMode = false;
+  if (typeof ctx.inAbstract !== "boolean") ctx.inAbstract = false;
+  if (typeof ctx.abstractBuffer !== "string") ctx.abstractBuffer = "";
+  const hasKatex = typeof katex !== "undefined";
+  const hasFootnote = typeof text === "string" && text.includes("\\footnote{");
+  const hasContextSensitiveLatex = typeof text === "string" && (
+    hasFootnote ||
+    ctx.documentMode ||
+    ctx.inAbstract ||
+    !!ctx.abstractBuffer ||
+    text.includes("\\begin{abstract}") ||
+    text.includes("\\end{abstract}") ||
+    text.includes("\\thanks") ||
+    text.includes("\\maketitle") ||
+    text.includes("\\title") ||
+    text.includes("\\author") ||
+    text.includes("\\date") ||
+    text.includes("\\today") ||
+    text.includes("\\ifsubmit") ||
+    text.includes("\\newcommand") ||
+    text.includes("\\global\\long\\def") ||
+    (ctx.macros.size > 0 && /\\[A-Za-z@]+/.test(text))
+  );
+  const cacheKey = `${hasKatex ? "katex" : "plain"}:${text}`;
+
+  if (!hasContextSensitiveLatex) {
+    const cached = latexCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+  }
 
   let result = esc(text);
+  const renderedMath = [];
+  function stashRenderedMath(html) {
+    const token = `__LATEX_RENDERED_MATH_${renderedMath.length}__`;
+    renderedMath.push(html);
+    return token;
+  }
+  // Protect escaped dollars so they are not treated as math delimiters.
+  result = result.replace(/\\\$/g, ESCAPED_DOLLAR_TOKEN);
+  result = extractLatexDefinitions(result, ctx);
+  result = expandDefinedLatexMacros(result, ctx);
+  result = resolveIfSubmitBranches(result);
+  result = stripLatexComments(result);
 
-  // Display math: $$...$$
-  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-    try {
-      return katex.renderToString(unesc(math), { displayMode: true, throwOnError: false });
-    } catch { return `<span class="latex-error">$$${math}$$</span>`; }
-  });
+  if (ctx.documentMode) {
+    if (ctx.afterDocumentEnd) return "";
+    if (!ctx.inDocument) {
+      const beginIdx = result.indexOf("\\begin{document}");
+      const coverTokenPattern = /\\(?:title|author|date|maketitle|begin\{abstract\}|end\{abstract\}|thanks|ifsubmit)\b/;
+      if (beginIdx === -1) {
+        if (!coverTokenPattern.test(result)) return "";
+      } else {
+        const before = result.slice(0, beginIdx);
+        const after = result.slice(beginIdx + "\\begin{document}".length);
+        result = coverTokenPattern.test(before) ? `${before}\n${after}` : after;
+      }
+      ctx.inDocument = true;
+    }
+    const endIdx = result.indexOf("\\end{document}");
+    if (endIdx !== -1) {
+      result = result.slice(0, endIdx);
+      ctx.afterDocumentEnd = true;
+    }
+  }
 
-  // Inline math: $...$  (but not \$)
-  result = result.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, math) => {
-    try {
-      return katex.renderToString(unesc(math), { displayMode: false, throwOnError: false });
-    } catch { return `<span class="latex-error">$${math}$</span>`; }
-  });
+  if (hasKatex) {
+    // Display math environments: \begin{equation|align|multiline|multline}...\end{...}
+    result = result.replace(/\\begin\{(equation\*?|align\*?|multiline\*?|multline\*?)\}([\s\S]*?)\\end\{\1\}/g, (_, env, math) => {
+      const isMultilineEnv = /^multiline\*?$|^multline\*?$/.test(env);
+      let envBody = sanitizeMathForKatex(math).replaceAll(ESCAPED_DOLLAR_TOKEN, "\\$");
+      if (isMultilineEnv) envBody = normalizeMultilineMathBody(envBody);
+      const renderEnv = isMultilineEnv ? "aligned" : env;
+      const envBlock = `\\begin{${renderEnv}}${envBody}\\end{${renderEnv}}`;
+      try {
+        return stashRenderedMath(katex.renderToString(unesc(envBlock), {
+          displayMode: true,
+          throwOnError: false,
+          macros: KATEX_MACROS,
+        }));
+      } catch {
+        return stashRenderedMath(`<span class="latex-error">\\begin{${env}}...\\end{${env}}</span>`);
+      }
+    });
 
-  // \section{...}
-  result = result.replace(/\\section\{([^}]*)\}/g, '<span class="latex-section">$1</span>');
+    // Display math: $$...$$
+    result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+      try {
+        const safeMath = unesc(sanitizeMathForKatex(math).replaceAll(ESCAPED_DOLLAR_TOKEN, "\\$"));
+        return stashRenderedMath(katex.renderToString(safeMath, {
+          displayMode: true,
+          throwOnError: false,
+          macros: KATEX_MACROS,
+        }));
+      } catch { return stashRenderedMath(`<span class="latex-error">$$${math}$$</span>`); }
+    });
 
-  // \subsection{...}
-  result = result.replace(/\\subsection\{([^}]*)\}/g, '<span class="latex-subsection">$1</span>');
+    // Inline math: $...$  (but not \$)
+    result = result.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, math) => {
+      try {
+        const safeMath = unesc(sanitizeMathForKatex(math).replaceAll(ESCAPED_DOLLAR_TOKEN, "\\$"));
+        return stashRenderedMath(`<span class="latex-inline-math">${katex.renderToString(safeMath, {
+          displayMode: false,
+          throwOnError: false,
+          macros: KATEX_MACROS,
+        })}</span>`);
+      } catch { return stashRenderedMath(`<span class="latex-error">$${math}$</span>`); }
+    });
+  }
+
+  // Cover-page metadata and front-matter blocks.
+  result = result.replace(/\\begin\{document\}|\\end\{document\}/g, "");
+  result = result.replace(/\\thispagestyle\*?\{[^}]*\}/g, "");
+  result = result.replace(/\\singlespacing\b/g, "");
+  result = replaceOneArgCommand(result, "\\title", (body) =>
+    `<span class="latex-cover-title">${normalizeCoverInlineText(body, ctx)}</span>`, true
+  );
+  result = replaceOneArgCommand(result, "\\author", (body) =>
+    `<span class="latex-cover-author">${normalizeCoverInlineText(body, ctx)}</span>`, true
+  );
+  result = replaceOneArgCommand(result, "\\date", (body) =>
+    `<span class="latex-cover-date">${normalizeCoverInlineText(body, ctx)}</span>`, true
+  );
+  result = result.replace(/\\maketitle\b/g, () => ctx.hasAbstract ? "" : renderCoverNotes(ctx));
+  result = replaceTwoArgCommand(result, "\\href", (_url, label) => label);
+  result = replaceTwoArgCommand(result, "\\setcounter", (counterName, value) =>
+    `<span class="latex-markup">\\setcounter{${counterName}}{${value}}</span>`
+  );
+  result = replaceAbstractEnvironment(result, ctx);
+  result = result.replace(/\\(?:section|subsection|subsubsection)\*?\{(Acknowledg(?:e)?ments?|Acknowlegements?)\}/gi,
+    '<span class="latex-cover-ack-heading">$1</span>');
+
+  // \section{...} / \section*{...}
+  result = result.replace(/\\section\*?\{([^}]*)\}/g, '<span class="latex-section">$1</span>');
+
+  // \subsection{...} / \subsection*{...}
+  result = result.replace(/\\subsection\*?\{([^}]*)\}/g, '<span class="latex-subsection">$1</span>');
+
+  // \subsubsection{...} / \subsubsection*{...}
+  result = result.replace(/\\subsubsection\*?\{([^}]*)\}/g, '<span class="latex-subsubsection">$1</span>');
+
+  // Footnotes render inline with superscript markers.
+  result = replaceLatexFootnotes(result, ctx);
+
+  // Natbib/BibTeX-style citations (including starred + optional args)
+  result = result.replace(
+    /\\(cite[a-zA-Z]*)\*?(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?\{([^}]*)\}/g,
+    (_, cmd, optA, optB, keys) => {
+      const citeKeys = (keys || "")
+        .split(",")
+        .map(k => k.trim())
+        .filter(Boolean);
+      if (citeKeys.length === 0) return "";
+
+      const entries = citeKeys.length > 1
+        ? `${citeKeys[0]}, ...`
+        : citeKeys[0];
+
+      const prefix = (optA || "").trim();
+      const suffix = (optB || "").trim();
+      let text = entries;
+      if (prefix) text = `${prefix} ${text}`;
+      if (suffix) text = `${text}, ${suffix}`;
+
+      const isParenthetical = !/^(citet|citealt|citealp|citeauthor|Citet|Citeauthor)$/.test(cmd);
+      return `<span class="latex-citation">${isParenthetical ? "(" : ""}${text}${isParenthetical ? ")" : ""}</span>`;
+    }
+  );
 
   // \textbf{...}
   result = result.replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>');
@@ -2360,6 +4358,7 @@ function renderLatex(text) {
 
   // LaTeX escape sequences: \% \$ \& \# \_ \{ \}
   result = result.replace(/\\%/g, '%');
+  result = result.replaceAll(ESCAPED_DOLLAR_TOKEN, '$');
   result = result.replace(/\\\$/g, '$');
   result = result.replace(/\\&amp;/g, '&amp;');  // esc() turned & into &amp;
   result = result.replace(/\\#/g, '#');
@@ -2371,8 +4370,16 @@ function renderLatex(text) {
   result = result.replace(/---/g, '\u2014');
   result = result.replace(/--/g, '\u2013');
 
+  // TeX double quotes: ``...'' -> “...”
+  result = result.replace(/``/g, '\u201c');
+  result = result.replace(/''/g, '\u201d');
+
   // ~ → non-breaking space (LaTeX tie)
   result = result.replace(/~/g, '&nbsp;');
+
+  // Remove any remaining labels outside rendered math blocks.
+  result = result.replace(/\\label\{[^}]*\}/g, '');
+  result = result.replace(/\\label\s+[^\s\\]+/g, '');
 
   // Catch-all: remaining \command{...} or \command → grey pill
   result = result.replace(/\\([a-zA-Z]+)\{([^}]*)\}/g,
@@ -2380,9 +4387,16 @@ function renderLatex(text) {
   result = result.replace(/\\([a-zA-Z]+)(?![{a-zA-Z])/g,
     (m, cmd) => `<span class="latex-markup">\\${cmd}</span>`);
 
+  // Restore rendered KaTeX HTML after all command/text transforms.
+  if (renderedMath.length > 0) {
+    result = result.replace(/__LATEX_RENDERED_MATH_(\d+)__/g, (_, idx) => renderedMath[Number(idx)] || "");
+  }
+
   // Cap cache size
-  if (latexCache.size > 500) latexCache.clear();
-  latexCache.set(text, result);
+  if (!hasContextSensitiveLatex) {
+    if (latexCache.size > 500) latexCache.clear();
+    latexCache.set(cacheKey, result);
+  }
   return result;
 }
 
@@ -2434,15 +4448,30 @@ document.addEventListener("mousedown", function(e) {
   }
 });
 
+document.addEventListener("click", function(e) {
+  if (state.viewMode !== "normal" || !state.normalCoverRange) return;
+  const target = e.target;
+  if (!target || !target.closest) return;
+  const coverEl = target.closest(
+    ".latex-cover-title, .latex-cover-author, .latex-cover-date, .latex-cover-abstract, .latex-cover-abstract-label, .latex-cover-abstract-text, .latex-cover-ack-heading, .latex-cover-notes, .latex-cover-note-item, .latex-cover-note-marker"
+  );
+  if (!coverEl) return;
+  if (state.editingPara === state.normalCoverRange.start) return;
+  startEditingParagraph(state.normalCoverRange.start, e);
+});
+
+window.addEventListener("scroll", updateHeaderJumpVisibility, { passive: true });
+window.addEventListener("resize", updateHeaderJumpVisibility);
+window.addEventListener("scroll", updateSafariSelectionHighlight, { passive: true });
+window.addEventListener("resize", updateSafariSelectionHighlight);
+document.addEventListener("selectionchange", updateSafariSelectionHighlight);
+
 // Toggle Source/Normal mode with Cmd+Shift+M (Mac) / Ctrl+Shift+M
 document.addEventListener("keydown", function(e) {
   if (e.key === "M" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
     e.preventDefault();
     if (state.paragraphs.length === 0) return;
-    state.viewMode = state.viewMode === "source" ? "normal" : "source";
-    state.editingPara = null;
-    latexCache.clear();
-    render();
+    setViewMode(state.viewMode === "source" ? "normal" : "source");
   }
 });
 
